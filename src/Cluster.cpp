@@ -1,0 +1,146 @@
+
+#include "Cluster.hpp"
+
+Cluster::Cluster()
+{
+}
+
+Cluster::~Cluster()
+{
+}
+
+static void	clean_config_string(std::string &config)
+{
+	size_t begin;
+	size_t end;
+
+	begin = config.find('#');
+	while ( begin != std::string::npos )
+	{
+		end = config.find('\n', begin);
+		config.erase(begin, end - begin + 1);
+		begin = config.find('#');
+	}
+	begin = config.find('\t');
+	while ( begin != std::string::npos )
+	{
+		config.erase(begin, 1);
+		begin = config.find('\t');
+	}
+	begin = config.find('\n');
+	while ( begin != std::string::npos )
+	{
+		if ( config[begin + 1] == '\n' )
+			config.erase(begin, 1);
+		begin = config.find('\n', begin + 1);
+	}
+}
+
+static std::vector<std::string>split_servers(std::string content)
+{
+	size_t begin;
+	size_t end;
+	size_t nb_of_brackets;
+	std::string servor_to_push;
+	std::vector<std::string> result;
+
+	begin = content.find("server");
+	while ( begin != std::string::npos )
+	{
+		end = content.find("{");
+		nb_of_brackets = 1;
+		while ( nb_of_brackets > 0 )
+		{
+			end++;
+			if ( !content[end] )
+				throw std::runtime_error("scope error");
+			if ( content[end] == '{' )
+				nb_of_brackets++;
+			else if ( content[end] == '}' )
+				nb_of_brackets--;
+		}
+		servor_to_push = content.substr(begin, end - begin + 1);
+		content.erase(begin, end - begin + 1);
+		result.push_back(servor_to_push);
+		begin = content.find("server");
+	}
+	return result ;
+}
+
+void	Cluster::config(std::string configFile)
+{
+	std::ifstream		configStream(configFile.c_str());
+	std::stringstream	ss;
+
+	ss << configStream.rdbuf();
+
+	std::string content(ss.str());
+	clean_config_string(content);
+	// std::cout << "content : " << content << std::endl;
+
+	std::vector<std::string> servers_config;
+	servers_config = split_servers(content);
+
+	for ( size_t i = 0 ; i < servers_config.size() ; i++ )
+	{
+		Server	new_server(servers_config[i]);
+		_servers.push_back(new_server);
+	}
+}
+
+void	Cluster::print_all()
+{
+	std::cout << "====================================" << std::endl;
+	std::cout << "|           Servers infos          |" << std::endl;
+	std::cout << "====================================" << std::endl;
+
+	for ( size_t i = 0 ; i < server_size() ; i++ )
+	{
+		std::cout << "Server      : [" << i + 1 << "]" << std::endl;
+		std::cout << "root        : [" << _servers[i].get_root() << "]" << std::endl;
+		std::cout << "server name : [" << _servers[i].get_server_name() << "]" << std::endl;
+		std::cout << "index       : [" << _servers[i].get_index() << "]" << std::endl;
+		std::cout << "redirect    : [" << _servers[i].get_redirect() << "]" << std::endl;
+		std::cout << "upload_path : [" << _servers[i].get_upload_path() << "]" << std::endl;
+		std::cout << "cgi_path    : [" << _servers[i].get_cgi_path() << "]" << std::endl;
+	
+		std::cout << "cgi ext     : [";
+		for ( size_t j = 0 ; j < _servers[i].get_cgi_extension_size() ; j++ )
+		{
+			std::cout << _servers[i].get_cgi_extension(j);
+			if ( j != _servers[i].get_cgi_extension_size() - 1 )
+				std::cout << " ";
+		}
+		std::cout << "]" << std::endl;
+	
+		std::cout << "listen port : [";
+		std::vector<std::pair<std::string, int>>		listening_port = _servers[i].get_listening_port();
+		for ( std::vector<std::pair<std::string, int>>::iterator it = listening_port.begin() ; it != listening_port.end() ; it++ )
+		{
+			std::cout << it->first << "::" << it->second;
+			if ( it + 1 != listening_port.end() )
+				std::cout << " ";
+		}
+		std::cout << "]" << std::endl;
+
+		std::cout << "methods     : [";
+		if (_servers[i].get_allow_methods(GET))
+			std::cout << "[GET]";
+		if (_servers[i].get_allow_methods(POST))
+			std::cout << "[POST]";
+		if (_servers[i].get_allow_methods(DELETE))
+			std::cout << "[DELETE]";
+		std::cout << "]" << std::endl;
+	
+		std::cout << "auto index  : [";
+		if (_servers[i].get_auto_index())
+			std::cout << "yes";
+		else
+			std::cout << "no";
+		std::cout << "]" << std::endl;
+	
+		std::cout << "body size   : [" << _servers[i].get_client_max_body_size() << "]" << std::endl;
+		
+		std::cout << "====================================" << std::endl;
+	}
+}
