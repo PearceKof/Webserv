@@ -28,6 +28,16 @@ public:
 	Location(std::string location_config);
 	~Location();
 
+	std::string	get_root() { return _root ; };
+	std::string	get_server_name() { return _server_name ; };
+	std::string	get_index() { return _index ; };
+	std::string	get_redirect() { return _redirect ; };
+	std::string	get_upload_path() { return _upload_path ; };
+	std::string	get_cgi_path() { return _cgi_path ; };
+	bool		get_allow_methods(int index) { return _allow_methods[index] ; };
+	bool		get_auto_index() { return _auto_index ; };
+	bool		get_upload() { return _upload ; };
+	std::string	get_client_max_body_size() { return _client_max_body_size ; };
 };
 
 #endif

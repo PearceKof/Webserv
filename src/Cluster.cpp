@@ -88,6 +88,57 @@ void	Cluster::config(std::string configFile)
 	}
 }
 
+void	Cluster::set_sockets(int &epoll_fd)
+{
+	size_t	size = server_size();
+
+	for ( size_t i = 0 ; i < size ; i++ )
+	{
+		std::vector<std::pair<std::string, int>> listening_port = _servers.get_listening_port();
+		for ( size_t j = 0 ; j < listening_port.size() ; i++ )
+		{
+			Socket new_socket(listening_port[i]);
+			_sockets.push_back(new_socket);
+		}
+	}
+}
+
+void	Cluster::setup()
+{
+	int	epoll_fd = epoll_create();;
+
+	if ( epoll_fd == -1 )
+	{
+		std::cerr << "epoll_create failed" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	set_sockets(epoll_fd);
+	//fill socket
+
+	while (1)
+	{
+		struct epoll_event event_list[1024];
+		int	nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, 30000);
+		if ( nb_of_events_to_handle == -1 )
+		{
+			std::cerr << "kevent failed" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		else if ( 0 < nb_of_events_to_handle )
+		{
+			for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
+			{
+				if ( event_list[i].filter == EV_READ || event_list[i].filter == EV_WRITE )
+					std::cout << "TEST" << std::endl;
+					//handle event
+			}
+		}
+	}
+}
+
+
+
 void	Cluster::print_all()
 {
 	std::cout << "====================================" << std::endl;
@@ -141,6 +192,30 @@ void	Cluster::print_all()
 	
 		std::cout << "body size   : [" << _servers[i].get_client_max_body_size() << "]" << std::endl;
 		
+		size_t	j = 1;
+		std::map<std::string, Location>		locations = _servers[i].get_locations();
+		for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; it++ )
+		{
+			std::cout << "------------------------------------" << std::endl;
+			std::cout << "locations   : " << j << std::endl;
+			std::cout << "root        : [" << it->second.get_root() << "]" << std::endl;
+			std::cout << "server name : [" << it->second.get_server_name() << "]" << std::endl;
+			std::cout << "index       : [" << it->second.get_index() << "]" << std::endl;
+			std::cout << "redirect    : [" << it->second.get_redirect() << "]" << std::endl;
+			std::cout << "upload_path : [" << it->second.get_upload_path() << "]" << std::endl;
+			std::cout << "cgi_path    : [" << it->second.get_cgi_path() << "]" << std::endl;
+
+			std::cout << "methods     : [";
+			if (it->second.get_allow_methods(GET))
+				std::cout << "[GET]";
+			if (it->second.get_allow_methods(POST))
+				std::cout << "[POST]";
+			if (it->second.get_allow_methods(DELETE))
+				std::cout << "[DELETE]";
+			std::cout << "]" << std::endl;
+			j++;
+		}
+
 		std::cout << "====================================" << std::endl;
 	}
 }

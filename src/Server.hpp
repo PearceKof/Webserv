@@ -40,6 +40,7 @@ public:
 	Server(std::string server_config);
 	~Server();
 
+	std::map<std::string, Location>	get_locations() { return _locations ; };
 	std::vector<std::pair<std::string, int>>	get_listening_port() { return _listening_port ; };
 	std::string	get_cgi_extension(int index) { return _cgi_extension[index] ; };
 	size_t	get_cgi_extension_size() { return _cgi_extension.size(); };
