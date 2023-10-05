@@ -4,11 +4,12 @@
 
 # include "Cluster.hpp"
 # include <cstdlib>
+# include <unistd.h>
 # include <iostream>
 # include <stdexcept>
 # include <string>
 # include <cstring>
-# include <sys/epoll.h>
+#include <sys/event.h>
 /*
 ------utils.cpp------
 */

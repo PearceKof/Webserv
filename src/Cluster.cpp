@@ -94,50 +94,80 @@ void	Cluster::set_sockets(int &epoll_fd)
 
 	for ( size_t i = 0 ; i < size ; i++ )
 	{
-		std::vector<std::pair<std::string, int>> listening_port = _servers.get_listening_port();
+		std::vector<std::pair<std::string, int>> listening_port = _servers[i].get_listening_port();
 		for ( size_t j = 0 ; j < listening_port.size() ; i++ )
 		{
-			Socket new_socket(listening_port[i]);
+			Socket new_socket(listening_port[j]);
 			_sockets.push_back(new_socket);
 		}
 	}
 }
 
-void	Cluster::setup()
+// void	Cluster::setup()
+// {
+// 	int	epoll_fd = epoll_create(1);
+
+// 	if ( epoll_fd == -1 )
+// 	{
+// 		std::cerr << "epoll_create failed" << std::endl;
+// 		exit(EXIT_FAILURE);
+// 	}
+
+// 	set_sockets(epoll_fd);
+// 	//fill socket
+// 	while (1)
+// 	{
+// 		struct epoll_event event_list[1024];
+// 		int	nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, 30000);
+// 		if ( nb_of_events_to_handle == -1 )
+// 		{
+// 			std::cerr << "kevent failed" << std::endl;
+// 			exit(EXIT_FAILURE);
+// 		}
+// 		else if ( 0 < nb_of_events_to_handle )
+// 		{
+// 			for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
+// 			{
+// 				// if ( event_list[i].events == EPOLLIN || event_list[i].events == EV_WRITE )
+// 				// 	std::cout << "TEST" << std::endl;
+// 					//handle event
+// 			}
+// 		}
+// 	}
+// }
+
+void    Cluster::setup()
 {
-	int	epoll_fd = epoll_create();;
+    int    epoll_fd = kqueue();;
 
-	if ( epoll_fd == -1 )
-	{
-		std::cerr << "epoll_create failed" << std::endl;
-		exit(EXIT_FAILURE);
-	}
+    if ( epoll_fd == -1 )
+    {
+        std::cerr << "epoll_create failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
-	set_sockets(epoll_fd);
-	//fill socket
+    set_sockets(epoll_fd);
+    //fill socket
 
-	while (1)
-	{
-		struct epoll_event event_list[1024];
-		int	nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, 30000);
-		if ( nb_of_events_to_handle == -1 )
-		{
-			std::cerr << "kevent failed" << std::endl;
-			exit(EXIT_FAILURE);
-		}
-		else if ( 0 < nb_of_events_to_handle )
-		{
-			for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
-			{
-				if ( event_list[i].filter == EV_READ || event_list[i].filter == EV_WRITE )
-					std::cout << "TEST" << std::endl;
-					//handle event
-			}
-		}
-	}
+    while (1)
+    {
+        struct kevent event_list[1024];
+        int    nb_of_events_to_handle = kevent(epoll_fd, NULL, 0, event_list, 1024, NULL);
+        if ( nb_of_events_to_handle == -1 )
+        {
+            std::cerr << "kevent failed" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        else if ( 0 < nb_of_events_to_handle )
+        {
+            for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
+            {
+                // if ( event_list[i].filter == EVFILT_READ || event_list[i].filter == EVFILT_WRITE )
+                    //handle event
+            }
+        }
+    }
 }
-
-
 
 void	Cluster::print_all()
 {

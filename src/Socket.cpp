@@ -21,8 +21,9 @@ Socket::Socket(std::pair<std::string, int> host_info) : _server_socket_fd(socket
 		std::cerr << "setsockopt function failed" << std::endl;
 	}
 
-	_server_address.ss_family = AF_UNSPEC;
-	_server_address.ss_socktype = 
+	_server_address.sin_family = AF_UNSPEC;
+	_server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+	_server_address.sin_port = htons(host_info.second);
 }
 
 Socket::~Socket()
