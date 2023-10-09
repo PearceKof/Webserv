@@ -164,6 +164,7 @@ void    Cluster::setup()
             {
                 // if ( event_list[i].filter == EVFILT_READ || event_list[i].filter == EVFILT_WRITE )
                     //handle event
+				//should check this: https://nima101.github.io/kqueue_server
             }
         }
     }
