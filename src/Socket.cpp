@@ -1,7 +1,7 @@
 
 #include "Socket.hpp"
 
-Socket::Socket(std::pair<std::string, int> host_info) : _server_socket_fd(socket(AF_UNSPEC, SOCK_STREAM, 0))
+Socket::Socket(std::pair<std::string, int> host_info) : _server_socket_fd(socket(AF_INET, SOCK_STREAM, 0))
 {
 	if ( _server_socket_fd == -1 )
 	{
