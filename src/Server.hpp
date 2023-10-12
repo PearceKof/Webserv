@@ -5,7 +5,7 @@
 # include <utility>
 # include <map>
 # include <string>
-# include "webserv.hpp"
+# include "Webserv.hpp"
 # include "Location.hpp"
 
 class Location;
@@ -15,7 +15,7 @@ class Server
 private:
 	std::map<std::string, Location>	_locations;
 	std::map<int, std::string>		_error_pages;
-	std::vector<std::pair<std::string, int>>	_listening_port;
+	std::vector<std::pair<std::string, int> >	_listening_port;
 	std::vector<std::string>		_cgi_extension;
 	std::string	_root;
 	std::string	_server_name;
@@ -41,7 +41,7 @@ public:
 	~Server();
 
 	std::map<std::string, Location>	get_locations() { return _locations ; };
-	std::vector<std::pair<std::string, int>>	get_listening_port() { return _listening_port ; };
+	std::vector<std::pair<std::string, int> >	get_listening_port() { return _listening_port ; };
 	std::string	get_cgi_extension(int index) { return _cgi_extension[index] ; };
 	size_t	get_cgi_extension_size() { return _cgi_extension.size(); };
 	std::string	get_root() { return _root ; };

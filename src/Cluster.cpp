@@ -88,13 +88,13 @@ void	Cluster::config(std::string configFile)
 	}
 }
 
-void	Cluster::set_sockets(int &epoll_fd)
+void	Cluster::set_sockets()
 {
 	size_t	size = server_size();
 
 	for ( size_t i = 0 ; i < size ; i++ )
 	{
-		std::vector<std::pair<std::string, int>> listening_port = _servers[i].get_listening_port();
+		std::vector<std::pair<std::string, int> > listening_port = _servers[i].get_listening_port(); //get_listening_port() ??
 		for ( size_t j = 0 ; j < listening_port.size() ; j++ )
 		{
 			Socket new_socket(listening_port[j]);
@@ -138,21 +138,14 @@ void	Cluster::set_sockets(int &epoll_fd)
 
 void    Cluster::setup()
 {
-    int    epoll_fd = kqueue();;
-
-    if ( epoll_fd == -1 )
-    {
-        std::cerr << "epoll_create failed" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    set_sockets(epoll_fd);
-    //fill socket
+    struct kevent evSet;
+    struct kevent evList[1024];
+    struct sockaddr_storage addr;
+    socklen_t socklen = sizeof(addr);
 
     while (1)
     {
-        struct kevent event_list[1024];
-        int    nb_of_events_to_handle = kevent(epoll_fd, NULL, 0, event_list, 1024, NULL);
+        int    num_events = kevent(, NULL, 0, event_list, 1024, NULL);
         if ( nb_of_events_to_handle == -1 )
         {
             std::cerr << "kevent failed" << std::endl;
@@ -196,8 +189,8 @@ void	Cluster::print_all()
 		std::cout << "]" << std::endl;
 	
 		std::cout << "listen port : [";
-		std::vector<std::pair<std::string, int>>		listening_port = _servers[i].get_listening_port();
-		for ( std::vector<std::pair<std::string, int>>::iterator it = listening_port.begin() ; it != listening_port.end() ; it++ )
+		std::vector<std::pair<std::string, int> >		listening_port = _servers[i].get_listening_port();
+		for ( std::vector<std::pair<std::string, int> >::iterator it = listening_port.begin() ; it != listening_port.end() ; it++ )
 		{
 			std::cout << it->first << "::" << it->second;
 			if ( it + 1 != listening_port.end() )

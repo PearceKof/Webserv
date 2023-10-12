@@ -4,6 +4,8 @@
 
 #include "Webserv.hpp"
 #include <fcntl.h>
+#include <netinet/in.h>
+
 class Socket
 {
 private:

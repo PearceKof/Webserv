@@ -1,7 +1,7 @@
 
 #ifndef CLUSTER_HPP
 # define CLUSTER_HPP
-# include <event.h>
+# include <sys/event.h>
 # include "Server.hpp"
 # include "Socket.hpp"
 # include <sstream>
@@ -17,7 +17,7 @@ class Cluster
 		std::vector<Server>	_servers;
 		std::vector<Socket>	_sockets;
 
-		void	set_sockets(int &epoll_fd);
+		void	set_sockets();
 	public:
 		Cluster();
 		~Cluster();

@@ -1,5 +1,5 @@
 
-#include "webserv.hpp"
+#include "Webserv.hpp"
 
 std::string	trim_config(const char *to_find, std::string& server_config)
 {
