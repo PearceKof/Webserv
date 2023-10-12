@@ -88,21 +88,6 @@ void	Cluster::config(std::string configFile)
 	}
 }
 
-void	Cluster::set_sockets()
-{
-	size_t	size = server_size();
-
-	for ( size_t i = 0 ; i < size ; i++ )
-	{
-		std::vector<std::pair<std::string, int> > listening_port = _servers[i].get_listening_port(); //get_listening_port() ??
-		for ( size_t j = 0 ; j < listening_port.size() ; j++ )
-		{
-			Socket new_socket(listening_port[j]);
-			_sockets.push_back(new_socket);
-		}
-	}
-}
-
 // void	Cluster::setup()
 // {
 // 	int	epoll_fd = epoll_create(1);
@@ -136,16 +121,42 @@ void	Cluster::set_sockets()
 // 	}
 // }
 
+void	Cluster::set_sockets(int &kq)
+{
+	size_t	size = server_size();
+
+	for ( size_t i = 0 ; i < size ; i++ )
+	{
+		std::vector<std::pair<std::string, int>> listening_port = _servers[i].get_listening_port();
+		for ( size_t j = 0 ; j < listening_port.size() ; j++ )
+		{
+			Socket new_socket(listening_port[j]);
+			_sockets.push_back(new_socket);
+			struct kevent ev_set;
+			EV_SET(&ev_set, new_socket.get_server_socket_fd(), EVFILT_READ, EV_ADD, 0, 0, NULL);
+			if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+				std::cerr << "failed to add socket to kqueue" << std::endl;
+		}
+	}
+}
+
 void    Cluster::setup()
 {
-    struct kevent evSet;
-    struct kevent evList[1024];
-    struct sockaddr_storage addr;
-    socklen_t socklen = sizeof(addr);
+    int    kq = kqueue();
+
+    if ( kq == -1 )
+    {
+        std::cerr << "kqueue failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    set_sockets(kq);
 
     while (1)
     {
-        int    num_events = kevent(, NULL, 0, event_list, 1024, NULL);
+		struct kevent ev_set;
+        struct kevent event_list[1024];
+        int    nb_of_events_to_handle = kevent(kq, NULL, 0, event_list, 1024, NULL);
         if ( nb_of_events_to_handle == -1 )
         {
             std::cerr << "kevent failed" << std::endl;
@@ -155,9 +166,40 @@ void    Cluster::setup()
         {
             for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
             {
-                // if ( event_list[i].filter == EVFILT_READ || event_list[i].filter == EVFILT_WRITE )
-                    //handle event
 				//should check this: https://nima101.github.io/kqueue_server
+				for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
+				{
+					if ( event_list[i].ident == get_sockets()[j].get_server_socket_fd() )
+					{
+						socklen_t 			addr_len = sizeof(get_sockets()[j].get_server_address());
+						struct sockaddr_in	addr = get_sockets()[j].get_server_address();
+			
+						int fd = accept(event_list[i].ident, (struct sockaddr *)&addr, &addr_len);
+						if ( fd == -1 )
+						{
+							std::cerr << "connection refused." << std::endl;
+							close(fd);
+						}
+						else
+						{
+							_clients_sockets.push_back(fd);
+							EV_SET(&ev_set, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+							if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+								std::cerr << "kevent failed" << std::endl;
+						}
+					}
+					else if (event_list[i].ident & EV_EOF)
+					{
+						EV_SET(&ev_set, event_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+						if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+							std::cerr << "kevent failed" << std::endl;
+						//close and pop_back connection from _clients_sockets
+					}
+					else if (event_list[i].filter == EVFILT_READ)
+					{
+						
+					}
+				}
             }
         }
     }
