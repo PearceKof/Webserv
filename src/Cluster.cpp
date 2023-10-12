@@ -127,7 +127,7 @@ void	Cluster::set_sockets(int &kq)
 
 	for ( size_t i = 0 ; i < size ; i++ )
 	{
-		std::vector<std::pair<std::string, int>> listening_port = _servers[i].get_listening_port();
+		std::vector<std::pair<std::string, int> > listening_port = _servers[i].get_listening_port();
 		for ( size_t j = 0 ; j < listening_port.size() ; j++ )
 		{
 			Socket new_socket(listening_port[j]);

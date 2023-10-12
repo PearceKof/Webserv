@@ -18,7 +18,7 @@ class Cluster
 		std::vector<Socket>	_sockets;
 		std::vector<int>	_clients_sockets;
 
-		void	set_sockets();
+		void	set_sockets(int &kq);
 	public:
 		Cluster();
 		~Cluster();
@@ -27,6 +27,7 @@ class Cluster
 
 		void	print_all();
 		size_t	server_size() { return _servers.size(); };
+		std::vector<Socket> get_sockets() { return _sockets }
 		std::vector<int>	get_clients_sockets() { return _clients_sockets ; };
 		int					get_client_socket(int index) { return _clients_sockets[index] ; };
 };

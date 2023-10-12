@@ -16,6 +16,7 @@ public:
 	Socket(std::pair<std::string, int> host_info);
 	~Socket();
 
+	int					get_server_socket_fd() {return _server_socket_fd ; }
 	struct sockaddr_in	get_server_address() { return _server_address ; }
 };
 
