@@ -1,4 +1,3 @@
-
 #include "Cluster.hpp"
 
 Cluster::Cluster()
@@ -102,18 +101,18 @@ void	Cluster::config(std::string configFile)
 // 	//fill socket
 // 	while (1)
 // 	{
-// 		struct epoll_event event_list[1024];
-// 		int	nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, 30000);
-// 		if ( nb_of_events_to_handle == -1 )
+// 		struct epoll_event ev_list[1024];
+// 		int	num_events = epoll_wait(epoll_fd, ev_list, 1024, 30000);
+// 		if ( num_events == -1 )
 // 		{
 // 			std::cerr << "kevent failed" << std::endl;
 // 			exit(EXIT_FAILURE);
 // 		}
-// 		else if ( 0 < nb_of_events_to_handle )
+// 		else if ( 0 < num_events )
 // 		{
-// 			for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
+// 			for ( size_t i = 0 ; i < num_events ; i++ )
 // 			{
-// 				// if ( event_list[i].events == EPOLLIN || event_list[i].events == EV_WRITE )
+// 				// if ( ev_list[i].events == EPOLLIN || ev_list[i].events == EV_WRITE )
 // 				// 	std::cout << "TEST" << std::endl;
 // 					//handle event
 // 			}
@@ -155,26 +154,26 @@ void    Cluster::setup()
     while (1)
     {
 		struct kevent ev_set;
-        struct kevent event_list[1024];
-        int    nb_of_events_to_handle = kevent(kq, NULL, 0, event_list, 1024, NULL);
-        if ( nb_of_events_to_handle == -1 )
+        struct kevent ev_list[1024];
+        int    num_events = kevent(kq, NULL, 0, ev_list, 1024, NULL);
+        if ( num_events == -1 )
         {
             std::cerr << "kevent failed" << std::endl;
             exit(EXIT_FAILURE);
         }
-        else if ( 0 < nb_of_events_to_handle )
+        else if ( 0 < num_events )
         {
-            for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
+            for ( size_t i = 0 ; i < num_events ; i++ )
             {
 				//should check this: https://nima101.github.io/kqueue_server
 				for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
 				{
-					if ( event_list[i].ident == get_sockets()[j].get_server_socket_fd() )
+					if ( ev_list[i].ident == get_sockets()[j].get_server_socket_fd() )
 					{
-						socklen_t 			addr_len = sizeof(get_sockets()[j].get_server_address());
+						socklen_t			addr_len = sizeof(get_sockets()[j].get_server_address());
 						struct sockaddr_in	addr = get_sockets()[j].get_server_address();
 			
-						int fd = accept(event_list[i].ident, (struct sockaddr *)&addr, &addr_len);
+						int fd = accept(ev_list[i].ident, (struct sockaddr *)&addr, &addr_len);
 						if ( fd == -1 )
 						{
 							std::cerr << "connection refused." << std::endl;
@@ -188,14 +187,14 @@ void    Cluster::setup()
 								std::cerr << "kevent failed" << std::endl;
 						}
 					}
-					else if (event_list[i].ident & EV_EOF)
+					else if (ev_list[i].ident & EV_EOF)
 					{
-						EV_SET(&ev_set, event_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+						EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
 						if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
 							std::cerr << "kevent failed" << std::endl;
 						//close and pop_back connection from _clients_sockets
 					}
-					else if (event_list[i].filter == EVFILT_READ)
+					else if (ev_list[i].filter == EVFILT_READ)
 					{
 						
 					}
