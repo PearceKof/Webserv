@@ -182,7 +182,7 @@ void    Cluster::setup()
 						else
 						{
 							_clients_sockets.push_back(fd);
-							EV_SET(&ev_set, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+							EV_SET(&ev_set, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
 							if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
 								std::cerr << "kevent failed" << std::endl;
 						}
