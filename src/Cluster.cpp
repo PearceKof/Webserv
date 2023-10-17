@@ -1,5 +1,6 @@
-
 #include "Cluster.hpp"
+#include <sys/types.h>
+#include <sys/socket.h>
 
 Cluster::Cluster()
 {
@@ -8,6 +9,7 @@ Cluster::Cluster()
 Cluster::~Cluster()
 {
 }
+
 
 static void	clean_config_string(std::string &config)
 {
@@ -106,6 +108,13 @@ void	Cluster::set_sockets(int &kq)
 	}
 }
 
+std::string readFile(std::string filename)
+{
+   std::stringstream buffer;
+   buffer << std::ifstream( filename ).rdbuf();
+   return buffer.str();
+}
+
 void    Cluster::setup()
 {
     int    kq = kqueue();
@@ -121,26 +130,26 @@ void    Cluster::setup()
     while (1)
     {
 		struct kevent ev_set;
-        struct kevent event_list[1024];
-        int    nb_of_events_to_handle = kevent(kq, NULL, 0, event_list, 1024, NULL);
-        if ( nb_of_events_to_handle == -1 )
+        struct kevent ev_list[1024];
+        int    num_events = kevent(kq, NULL, 0, ev_list, 1024, NULL);
+        if ( num_events == -1 )
         {
             std::cerr << "kevent failed" << std::endl;
             exit(EXIT_FAILURE);
         }
-        else if ( 0 < nb_of_events_to_handle )
+        else if ( 0 < num_events )
         {
-            for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
+            for ( size_t i = 0 ; i < num_events ; i++ )
             {
 				//should check this: https://nima101.github.io/kqueue_server
 				for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
 				{
-					if ( event_list[i].ident == get_sockets()[j].get_server_socket_fd() )
+					if ( ev_list[i].ident == get_sockets()[j].get_server_socket_fd() )
 					{
-						socklen_t 			addr_len = sizeof(get_sockets()[j].get_server_address());
+						socklen_t			addr_len = sizeof(get_sockets()[j].get_server_address());
 						struct sockaddr_in	addr = get_sockets()[j].get_server_address();
 			
-						int fd = accept(event_list[i].ident, (struct sockaddr *)&addr, &addr_len);
+						int fd = accept(ev_list[i].ident, (struct sockaddr *)&addr, &addr_len);
 						if ( fd == -1 )
 						{
 							std::cerr << "connection refused." << std::endl;
@@ -156,16 +165,22 @@ void    Cluster::setup()
 								std::cerr << "new connection accepted" << std::endl;
 						}
 					}
-					else if (event_list[i].ident & EV_EOF)
+					else if (ev_list[i].ident & EV_EOF)
 					{
-						EV_SET(&ev_set, event_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+						EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
 						if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
 							std::cerr << "kevent failed to delete" << std::endl;
 						//close and pop_back connection from _clients_sockets
 					}
-					else if (event_list[i].filter == EVFILT_READ)
+					else if (ev_list[i].filter == EVFILT_READ)
 					{
-						
+						//need to parse the requests
+						std::string filecontent = readFile("test.html");
+						std::string response = "HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: 71\nServer: Baki/plain\n\n";
+						std::string htmlresponse(response);
+						htmlresponse.append(filecontent);
+						if (send(ev_list[i].ident, htmlresponse.c_str(), htmlresponse.length(), 0) == -1)
+							perror("send");
 					}
 				}
             }

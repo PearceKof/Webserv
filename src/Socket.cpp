@@ -36,7 +36,4 @@ Socket::Socket(int port) : _server_socket_fd(socket(AF_INET, SOCK_STREAM, 0))
 
 }
 
-Socket::~Socket()
-{
-	// close(_server_socket_fd);
-}
+Socket::~Socket() {}

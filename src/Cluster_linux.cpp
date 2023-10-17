@@ -86,39 +86,6 @@ void	Cluster::config(std::string configFile)
 	}
 }
 
-// void	Cluster::setup()
-// {
-// 	int	epoll_fd = epoll_create(1);
-
-// 	if ( epoll_fd == -1 )
-// 	{
-// 		std::cerr << "epoll_create failed" << std::endl;
-// 		exit(EXIT_FAILURE);
-// 	}
-
-// 	set_sockets(epoll_fd);
-// 	//fill socket
-// 	while (1)
-// 	{
-// 		struct epoll_event event_list[1024];
-// 		int	nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, 30000);
-// 		if ( nb_of_events_to_handle == -1 )
-// 		{
-// 			std::cerr << "kevent failed" << std::endl;
-// 			exit(EXIT_FAILURE);
-// 		}
-// 		else if ( 0 < nb_of_events_to_handle )
-// 		{
-// 			for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
-// 			{
-// 				// if ( event_list[i].events == EPOLLIN || event_list[i].events == EV_WRITE )
-// 				// 	std::cout << "TEST" << std::endl;
-// 					//handle event
-// 			}
-// 		}
-// 	}
-// }
-
 void	Cluster::set_sockets(int &fd)
 {
 	size_t	size = server_size();
