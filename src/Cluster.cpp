@@ -211,7 +211,7 @@ void    Cluster::setup()
 						std::string response = "HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: 71\nServer: Baki/plain\n\n";
 						std::string htmlresponse(response);
 						htmlresponse.append(filecontent);
-						if (send(ev_list[i].ident, htmlresponse, htmlresponse.length(), 0) == -1)
+						if (send(ev_list[i].ident, htmlresponse.c_str(), htmlresponse.length(), 0) == -1)
 							perror("send");
 					}
 				}
