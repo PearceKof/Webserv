@@ -1,7 +1,7 @@
 
 #include "Socket.hpp"
 
-Socket::Socket(std::pair<std::string, int> host_info) : _server_socket_fd(socket(AF_INET, SOCK_STREAM, 0))
+Socket::Socket(int port) : _server_socket_fd(socket(AF_INET, SOCK_STREAM, 0))
 {
 	if ( _server_socket_fd == -1 )
 	{
@@ -22,7 +22,7 @@ Socket::Socket(std::pair<std::string, int> host_info) : _server_socket_fd(socket
 
 	_server_address.sin_family = AF_UNSPEC;
 	_server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-	_server_address.sin_port = htons(host_info.second);
+	_server_address.sin_port = htons(port);
 
 	if ( bind(_server_socket_fd, (struct sockaddr *)&_server_address, sizeof(_server_address)) == -1 )
 	{
@@ -38,5 +38,5 @@ Socket::Socket(std::pair<std::string, int> host_info) : _server_socket_fd(socket
 
 Socket::~Socket()
 {
-	close(_server_socket_fd);
+	// close(_server_socket_fd);
 }

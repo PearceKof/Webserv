@@ -13,7 +13,7 @@ private:
 	struct sockaddr_in	_server_address;
 	Socket();
 public:
-	Socket(std::pair<std::string, int> host_info);
+	Socket(int port);
 	~Socket();
 
 	int					get_server_socket_fd() {return _server_socket_fd ; }

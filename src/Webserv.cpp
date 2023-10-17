@@ -11,7 +11,6 @@ int	main(int ac, char **av)
 
 	Cluster	cluster;
 
-
 	try
 	{
 		cluster.config(av[1]);

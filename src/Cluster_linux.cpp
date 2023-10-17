@@ -1,5 +1,4 @@
-
-#include "Cluster.hpp"
+#include "Cluster_linux.hpp"
 
 Cluster::Cluster()
 {
@@ -87,42 +86,80 @@ void	Cluster::config(std::string configFile)
 	}
 }
 
-void	Cluster::set_sockets(int &kq)
+// void	Cluster::setup()
+// {
+// 	int	epoll_fd = epoll_create(1);
+
+// 	if ( epoll_fd == -1 )
+// 	{
+// 		std::cerr << "epoll_create failed" << std::endl;
+// 		exit(EXIT_FAILURE);
+// 	}
+
+// 	set_sockets(epoll_fd);
+// 	//fill socket
+// 	while (1)
+// 	{
+// 		struct epoll_event event_list[1024];
+// 		int	nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, 30000);
+// 		if ( nb_of_events_to_handle == -1 )
+// 		{
+// 			std::cerr << "kevent failed" << std::endl;
+// 			exit(EXIT_FAILURE);
+// 		}
+// 		else if ( 0 < nb_of_events_to_handle )
+// 		{
+// 			for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
+// 			{
+// 				// if ( event_list[i].events == EPOLLIN || event_list[i].events == EV_WRITE )
+// 				// 	std::cout << "TEST" << std::endl;
+// 					//handle event
+// 			}
+// 		}
+// 	}
+// }
+
+void	Cluster::set_sockets(int &fd)
 {
 	size_t	size = server_size();
-
+	struct sockaddr_in	address;
+	int sock_fd;
+	std::vector<std::pair<std::string, int> > listening_port;
 	for ( size_t i = 0 ; i < size ; i++ )
 	{
-		std::vector<std::pair<std::string, int> > listening_port = _servers[i].get_listening_port();
+		listening_port = _servers[i].get_listening_port();
 		for ( size_t j = 0 ; j < listening_port.size() ; j++ )
 		{
 			Socket new_socket(listening_port[j].second);
+			struct epoll_event ev_set;
+			ev_set.events = EPOLLIN;
+			ev_set.data.fd = new_socket.get_server_socket_fd();
+			if ( epoll_ctl(fd, EPOLL_CTL_ADD, new_socket.get_server_socket_fd(), &ev_set) )
+				std::cerr << "failed to add socket" << std::endl;
 			_sockets.push_back(new_socket);
-			struct kevent ev_set;
-			EV_SET(&ev_set, new_socket.get_server_socket_fd(), EVFILT_READ, EV_ADD, 0, 0, NULL);
-			if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-				std::cerr << "failed to add socket to kqueue" << std::endl;
+			
+			std::cerr << "DEBUG i: " << i << " j: " << j << " fd: " << new_socket.get_server_socket_fd() << std::endl;
 		}
 	}
 }
 
 void    Cluster::setup()
 {
-    int    kq = kqueue();
+    int    epoll_fd = epoll_create1(0);
 
-    if ( kq == -1 )
+    if ( epoll_fd == -1 )
     {
-        std::cerr << "kqueue failed" << std::endl;
+        std::cerr << "epoll_create failed" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    set_sockets(kq);
+    set_sockets(epoll_fd);
 
     while (1)
     {
-		struct kevent ev_set;
-        struct kevent event_list[1024];
-        int    nb_of_events_to_handle = kevent(kq, NULL, 0, event_list, 1024, NULL);
+		struct epoll_event ev_set;
+        struct epoll_event event_list[1024];
+        int    nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, -1);
         if ( nb_of_events_to_handle == -1 )
         {
             std::cerr << "kevent failed" << std::endl;
@@ -135,12 +172,13 @@ void    Cluster::setup()
 				//should check this: https://nima101.github.io/kqueue_server
 				for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
 				{
-					if ( event_list[i].ident == get_sockets()[j].get_server_socket_fd() )
+					if ( event_list[i].data.fd == get_sockets()[j].get_server_socket_fd() )
 					{
+						std::cerr << "client attempt to connect" << std::endl;
 						socklen_t 			addr_len = sizeof(get_sockets()[j].get_server_address());
 						struct sockaddr_in	addr = get_sockets()[j].get_server_address();
-			
-						int fd = accept(event_list[i].ident, (struct sockaddr *)&addr, &addr_len);
+
+						int fd = accept(event_list[i].data.fd, (struct sockaddr *)&addr, &addr_len);
 						if ( fd == -1 )
 						{
 							std::cerr << "connection refused." << std::endl;
@@ -149,24 +187,21 @@ void    Cluster::setup()
 						else
 						{
 							_clients_sockets.push_back(fd);
-							EV_SET(&ev_set, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-							if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-								std::cerr << "kevent failed to add" << std::endl;
-							else
-								std::cerr << "new connection accepted" << std::endl;
+							ev_set.events = EPOLLIN;
+							if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev_set) )
+								std::cerr << "failed to add client" << std::endl;
 						}
 					}
-					else if (event_list[i].ident & EV_EOF)
+					else if ( event_list[i].data.fd & EV_EOF )
 					{
-						EV_SET(&ev_set, event_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-						if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-							std::cerr << "kevent failed to delete" << std::endl;
+						if ( epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, &ev_set) )
+								std::cerr << "failed to delete client" << std::endl;
 						//close and pop_back connection from _clients_sockets
 					}
-					else if (event_list[i].filter == EVFILT_READ)
-					{
+					// else if (event_list[i].filter == EVFILT_READ)
+					// {
 						
-					}
+					// }
 				}
             }
         }

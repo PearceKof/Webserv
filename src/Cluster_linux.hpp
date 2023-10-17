@@ -1,8 +1,7 @@
 
-#ifndef CLUSTER_HPP
-# define CLUSTER_HPP
-
-# include <sys/event.h>
+#ifndef CLUSTER_LINUX_HPP
+# define CLUSTER_LINUX_HPP
+# include <sys/epoll.h>
 # include "Server.hpp"
 # include "Socket.hpp"
 # include <sstream>
