@@ -1,4 +1,6 @@
 #include "Cluster.hpp"
+#include <sys/types.h>
+#include <sys/socket.h>
 
 Cluster::Cluster()
 {
@@ -7,6 +9,7 @@ Cluster::Cluster()
 Cluster::~Cluster()
 {
 }
+
 
 static void	clean_config_string(std::string &config)
 {
@@ -139,6 +142,13 @@ void	Cluster::set_sockets(int &kq)
 	}
 }
 
+std::string readFile(std::string filename)
+{
+   std::stringstream buffer;
+   buffer << std::ifstream( filename ).rdbuf();
+   return buffer.str();
+}
+
 void    Cluster::setup()
 {
     int    kq = kqueue();
@@ -196,7 +206,13 @@ void    Cluster::setup()
 					}
 					else if (ev_list[i].filter == EVFILT_READ)
 					{
-						
+						//need to parse the requests
+						std::string filecontent = readFile("test.html");
+						std::string response = "HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: 71\nServer: Baki/plain\n\n";
+						std::string htmlresponse(response);
+						htmlresponse.append(filecontent);
+						if (send(ev_list[i].ident, htmlresponse, htmlresponse.length(), 0) == -1)
+							perror("send");
 					}
 				}
             }
