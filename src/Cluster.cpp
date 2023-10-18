@@ -175,7 +175,7 @@ void    Cluster::setup()
 					else if (ev_list[i].filter == EVFILT_READ)
 					{
 						//need to parse the requests
-						std::string filecontent = readFile("test.html");
+						std::string filecontent = readFile("www/test.html");
 						std::string response = "HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: 71\nServer: Baki/plain\n\n";
 						std::string htmlresponse(response);
 						htmlresponse.append(filecontent);
