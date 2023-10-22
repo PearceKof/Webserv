@@ -144,11 +144,12 @@ void    Cluster::setup()
 				//should check this: https://nima101.github.io/kqueue_server
 				for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
 				{
+					/*std::cout << "i: " << i << std::endl;
+					std::cout << "j: " << j << std::endl;*/
 					if ( ev_list[i].ident == get_sockets()[j].get_server_socket_fd() )
 					{
 						socklen_t			addr_len = sizeof(get_sockets()[j].get_server_address());
 						struct sockaddr_in	addr = get_sockets()[j].get_server_address();
-			
 						int fd = accept(ev_list[i].ident, (struct sockaddr *)&addr, &addr_len);
 						if ( fd == -1 )
 						{
@@ -165,23 +166,30 @@ void    Cluster::setup()
 								std::cerr << "new connection accepted" << std::endl;
 						}
 					}
-					else if (ev_list[i].ident & EV_EOF)
+					else if (ev_list[i].flags & EV_EOF)
 					{
 						EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
 						if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
 							std::cerr << "kevent failed to delete" << std::endl;
 						//close and pop_back connection from _clients_sockets
 					}
-					else if (ev_list[i].filter == EVFILT_READ)
+					else if (std::find(get_clients_sockets().begin(), get_clients_sockets().end(), ev_list[i].ident) != get_clients_sockets().end())
 					{
-						//need to parse the requests
-						std::string filecontent = readFile("www/test.html");
-						std::string response = "HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: 71\nServer: Baki/plain\n\n";
-						std::string htmlresponse(response);
-						htmlresponse.append(filecontent);
-						if (send(ev_list[i].ident, htmlresponse.c_str(), htmlresponse.length(), 0) == -1)
-							perror("send");
+						if (ev_list[i].filter == EVFILT_READ)
+						{
+							//need to parse the requests
+							std::string filecontent = readFile("www/test.html");
+							std::string response = "HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: 265\nServer: Baki/plain\n\n";
+							std::string htmlresponse(response);
+							htmlresponse.append(filecontent);
+							if (send(ev_list[i].ident, htmlresponse.c_str(), htmlresponse.length(), 0) == -1)
+								perror("send");
+							EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+							if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+								std::cerr << "kevent failed to delete" << std::endl;
+						}
 					}
+
 				}
             }
         }
