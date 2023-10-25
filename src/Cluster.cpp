@@ -172,22 +172,6 @@ void	Cluster::run(int &kq)
 								std::cerr << "new connection accepted" << std::endl;
 						}
 					}
-<<<<<<< HEAD
-					else if ( std::find(get_clients_sockets().begin(), get_clients_sockets().end(), ev_list[i].ident) != get_clients_sockets().end() )
-=======
-					else if (ev_list[i].flags & EV_EOF)
->>>>>>> e948766f229b58eef3c2cc5277864818c32c6c25
-					{
-						if ( ev_list[i].filter == EVFILT_READ )
-						{
-							_clients[ev_list[i].ident].request = read_request(ev_list[i].ident);
-							// std::cerr << "[DEBUG] _clients[ev_list[i].ident].request = " << _clients[ev_list[i].ident].request << std::endl;
-						}
-						else if ( ev_list[i].filter == EVFILT_WRITE )
-						{
-							Request(ev_list[i].ident, _clients[ev_list[i].ident].request, get_sockets()[j].get_server()->get_locations());
-						}
-					}
 					else if ( ev_list[i].flags & EV_EOF )
 					{
 						EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
@@ -195,8 +179,6 @@ void	Cluster::run(int &kq)
 							std::cerr << "kevent failed to delete" << std::endl;
 						//close and pop_back connection from _clients_sockets
 					}
-<<<<<<< HEAD
-=======
 					else if (std::find(get_clients_sockets().begin(), get_clients_sockets().end(), ev_list[i].ident) != get_clients_sockets().end())
 					{
 						if (ev_list[i].filter == EVFILT_READ)
@@ -214,7 +196,6 @@ void	Cluster::run(int &kq)
 						}
 					}
 
->>>>>>> e948766f229b58eef3c2cc5277864818c32c6c25
 				}
             }
         }
