@@ -28,7 +28,6 @@ class Cluster
 		std::vector<int>			_clients_sockets;
 
 		void	set_sockets(int &kq);
-		void	run(int &kq);
 	public:
 		Cluster();
 		~Cluster();
