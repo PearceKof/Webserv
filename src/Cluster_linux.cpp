@@ -192,7 +192,7 @@ void    Cluster::setup()
 					if ( event_list[i].events & EPOLLIN )
 					{
 						_clients[event_list[i].data.fd].request = read_request(event_list[i].data.fd);
-						// if (_clients[event_list[i].data.fd].request != "")
+						if (_clients[event_list[i].data.fd].request != "")
 							std::cerr << "[DEBUG] READ _clients[" <<event_list[i].data.fd<< "].request = " << _clients[event_list[i].data.fd].request << std::endl;
 					}
 					else if ( event_list[i].events & EPOLLOUT )
