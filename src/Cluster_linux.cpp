@@ -97,17 +97,64 @@ void	Cluster::set_sockets(int &fd)
 		listening_port = _servers[i].get_listening_port();
 		for ( size_t j = 0 ; j < listening_port.size() ; j++ )
 		{
-			Socket new_socket(listening_port[j].second);
+			Socket new_socket(listening_port[j].second, &_servers[i]);
 			struct epoll_event ev_set;
-			ev_set.events = EPOLLIN;
+			ev_set.events = EPOLLIN | EPOLLOUT;
 			ev_set.data.fd = new_socket.get_server_socket_fd();
 			if ( epoll_ctl(fd, EPOLL_CTL_ADD, new_socket.get_server_socket_fd(), &ev_set) )
 				std::cerr << "failed to add socket" << std::endl;
 			_sockets.push_back(new_socket);
 			
-			std::cerr << "DEBUG i: " << i << " j: " << j << " fd: " << new_socket.get_server_socket_fd() << std::endl;
+			std::cerr << "DEBUG i: " << i << " j: " << j << " fd: " << _sockets.back().get_server_socket_fd() << std::endl;
 		}
 	}
+}
+
+std::string readFile(std::string filename)
+{
+   std::stringstream buffer;
+   buffer << std::ifstream( filename ).rdbuf();
+   return buffer.str();
+}
+
+void	Cluster::accept_new_connection(int new_client_fd, int epoll_fd, Socket *socket)
+{
+	struct epoll_event ev_set;
+	socklen_t addr_len = sizeof(socket->get_server_address());
+
+	std::cerr << "client attempt to connect " << new_client_fd << std::endl;
+	int fd = accept(new_client_fd, (struct sockaddr *)socket->get_server_address(), &addr_len);
+	if ( fd == -1 )
+	{
+		std::cerr << "connection refused." << std::endl;
+		close(fd);
+	}
+	else
+	{
+		if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
+		{
+			throw std::runtime_error("fcntl function failed");
+		}
+		_clients_sockets.push_back(fd);
+		ev_set.events = EPOLLIN | EPOLLOUT;
+		ev_set.data.fd = fd;
+		_clients[fd].events = ev_set;
+		_clients[fd].server = socket->get_server();
+		if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev_set) )
+			std::cerr << "failed to add client" << std::endl;
+		else
+			std::cerr << "succeed to add client : " << fd << std::endl;
+	}
+}
+
+Socket	*Cluster::is_a_listen_fd(int event_fd)
+{
+	for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
+	{
+		if (event_fd == get_sockets()[j].get_server_socket_fd())
+			return get_socket(j) ;
+	}
+	return NULL ;
 }
 
 void    Cluster::setup()
@@ -122,11 +169,12 @@ void    Cluster::setup()
 
     set_sockets(epoll_fd);
 
+	struct epoll_event ev_set;
+    struct epoll_event event_list[1024];
+	struct sockaddr_in *addr;
     while (1)
     {
-		struct epoll_event ev_set;
-        struct epoll_event event_list[1024];
-        int    nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, -1);
+        int    nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, 30000);
         if ( nb_of_events_to_handle == -1 )
         {
             std::cerr << "kevent failed" << std::endl;
@@ -136,39 +184,23 @@ void    Cluster::setup()
         {
             for ( size_t i = 0 ; i < nb_of_events_to_handle ; i++ )
             {
-				//should check this: https://nima101.github.io/kqueue_server
-				for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
+				Socket *socket = is_a_listen_fd(event_list[i].data.fd);
+				if ( socket )
+					accept_new_connection(event_list[i].data.fd, epoll_fd, socket);
+				else if ( std::find(get_clients_sockets().begin(), get_clients_sockets().end(), event_list[i].data.fd) != get_clients_sockets().end() )
 				{
-					if ( event_list[i].data.fd == get_sockets()[j].get_server_socket_fd() )
+					if ( event_list[i].events & EPOLLIN )
 					{
-						std::cerr << "client attempt to connect" << std::endl;
-						socklen_t 			addr_len = sizeof(get_sockets()[j].get_server_address());
-						struct sockaddr_in	addr = get_sockets()[j].get_server_address();
-
-						int fd = accept(event_list[i].data.fd, (struct sockaddr *)&addr, &addr_len);
-						if ( fd == -1 )
-						{
-							std::cerr << "connection refused." << std::endl;
-							close(fd);
-						}
-						else
-						{
-							_clients_sockets.push_back(fd);
-							ev_set.events = EPOLLIN;
-							if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev_set) )
-								std::cerr << "failed to add client" << std::endl;
-						}
+						_clients[event_list[i].data.fd].request = read_request(event_list[i].data.fd);
+						// if (_clients[event_list[i].data.fd].request != "")
+							std::cerr << "[DEBUG] READ _clients[" <<event_list[i].data.fd<< "].request = " << _clients[event_list[i].data.fd].request << std::endl;
 					}
-					else if ( event_list[i].data.fd & EV_EOF )
+					else if ( event_list[i].events & EPOLLOUT )
 					{
-						if ( epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, &ev_set) )
-								std::cerr << "failed to delete client" << std::endl;
-						//close and pop_back connection from _clients_sockets
+						Request(event_list[i].data.fd, _clients[event_list[i].data.fd]);
+						// if (_clients[event_list[i].data.fd].request != "")
+						// 	std::cerr << "[DEBUG] WRITE _clients[" << event_list[i].data.fd << "].request = " << _clients[event_list[i].data.fd].request << std::endl;
 					}
-					// else if (event_list[i].filter == EVFILT_READ)
-					// {
-						
-					// }
 				}
             }
         }

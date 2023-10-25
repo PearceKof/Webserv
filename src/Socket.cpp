@@ -1,7 +1,7 @@
 
 #include "Socket.hpp"
 
-Socket::Socket(int port) : _server_socket_fd(socket(AF_INET, SOCK_STREAM, 0))
+Socket::Socket(int port, Server *server) : _server_socket_fd(socket(AF_INET, SOCK_STREAM, 0)), _server(server) 
 {
 	if ( _server_socket_fd == -1 )
 	{

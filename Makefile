@@ -4,10 +4,10 @@ CC = c++
 
 FLAGS		= -Wall -Wextra -Werror -std=c++98
 
-FILES		= ./src/Cluster.cpp ./src/Location.cpp ./src/Server.cpp ./src/Webserv.cpp ./src/Socket.cpp ./src/utils.cpp
+FILES		= ./src/Cluster.cpp ./src/Location.cpp ./src/Server.cpp ./src/Webserv.cpp ./src/Socket.cpp ./src/utils.cpp ./src/Request.cpp
 OBJ			= $(FILES:%.cpp=%.o)
 
-LINUX_FILES = ./src/Cluster_linux.cpp ./src/Location.cpp ./src/Server.cpp ./src/Webserv.cpp ./src/Socket.cpp ./src/utils.cpp
+LINUX_FILES = ./src/Cluster_linux.cpp ./src/Location.cpp ./src/Server.cpp ./src/Webserv.cpp ./src/Socket.cpp ./src/utils.cpp ./src/Request.cpp
 LINUX_OBJ	= $(LINUX_FILES:%.cpp=%.o)
 
 all: $(OBJ) $(NAME)

@@ -4,21 +4,33 @@
 # include <sys/epoll.h>
 # include "Server.hpp"
 # include "Socket.hpp"
+# include "Webserv.hpp"
+# include "Request.hpp"
 # include <sstream>
 # include <fstream>
 # include <string>
 # include <map>
+#include <algorithm>
 class Server;
 class Socket;
-
+class Location;
+struct client_info
+{
+	struct	epoll_event	events;
+	std::string			request;
+	Server				*server;
+};
 class Cluster
 {
 	private:
-		std::vector<Server>	_servers;
-		std::vector<Socket>	_sockets;
+		std::vector<Server>			_servers;
+		std::vector<Socket>			_sockets;
+		std::map<int, client_info>	_clients;
 		std::vector<int>	_clients_sockets;
 
 		void	set_sockets(int &kq);
+		void	accept_new_connection(int new_client_fd, int epoll_fd, Socket *socket);
+		Socket	*is_a_listen_fd(int event_fd);
 	public:
 		Cluster();
 		~Cluster();
@@ -27,8 +39,9 @@ class Cluster
 
 		void	print_all();
 		size_t	server_size() { return _servers.size(); };
+		Socket				*get_socket(int index) { return &_sockets[index] ; };
 		std::vector<Socket> get_sockets() { return _sockets ; };
-		std::vector<int>	get_clients_sockets() { return _clients_sockets ; };
+		std::vector<int>	&get_clients_sockets() { return _clients_sockets ; };
 		int					get_client_socket(int index) { return _clients_sockets[index] ; };
 };
 

@@ -2,8 +2,10 @@
 #ifndef WEBSERV_HPP
 # define WEBSERV_HPP
 
-// # include "Cluster_linux.hpp"
-# include "Cluster.hpp"
+# include "Cluster_linux.hpp"
+// # include "Cluster.hpp"
+# include "Request.hpp"
+# include "Location.hpp"
 # include <cstdlib>
 # include <unistd.h>
 # include <iostream>
@@ -11,6 +13,7 @@
 # include <string>
 # include <cstring>
 #include <sys/event.h>
+
 /*
 ------utils.cpp------
 */
