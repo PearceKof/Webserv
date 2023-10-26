@@ -1,12 +1,11 @@
+
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
+# include "Webserv.hpp"
 # include <vector>
-# include <utility>
 # include <map>
 # include <string>
-# include "Webserv.hpp"
-# include "Location.hpp"
 
 class Location;
 

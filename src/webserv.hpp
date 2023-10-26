@@ -4,14 +4,18 @@
 
 # include "Cluster_linux.hpp"
 // # include "Cluster.hpp"
+# include "Socket.hpp"
+# include "Server.hpp"
 # include "Request.hpp"
 # include "Location.hpp"
+
 # include <cstdlib>
-# include <unistd.h>
 # include <iostream>
 # include <stdexcept>
-# include <string>
 # include <cstring>
+
+# include <fcntl.h>
+# include <unistd.h>
 #include <sys/event.h>
 
 /*

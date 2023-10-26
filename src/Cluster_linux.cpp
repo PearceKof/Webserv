@@ -1,3 +1,4 @@
+
 #include "Cluster_linux.hpp"
 
 Cluster::Cluster()
@@ -177,7 +178,7 @@ void    Cluster::setup()
         int    nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, 30000);
         if ( nb_of_events_to_handle == -1 )
         {
-            std::cerr << "kevent failed" << std::endl;
+            std::cerr << "epoll_wait failed" << std::endl;
             exit(EXIT_FAILURE);
         }
         else if ( 0 < nb_of_events_to_handle )
@@ -187,19 +188,36 @@ void    Cluster::setup()
 				Socket *socket = is_a_listen_fd(event_list[i].data.fd);
 				if ( socket )
 					accept_new_connection(event_list[i].data.fd, epoll_fd, socket);
-				else if ( std::find(get_clients_sockets().begin(), get_clients_sockets().end(), event_list[i].data.fd) != get_clients_sockets().end() )
+				// else if ( std::find(get_clients_sockets().begin(), get_clients_sockets().end(), event_list[i].data.fd) != get_clients_sockets().end() )
+				else if ( _clients.find(event_list[i].data.fd) != _clients.end() )
 				{
 					if ( event_list[i].events & EPOLLIN )
 					{
 						_clients[event_list[i].data.fd].request = read_request(event_list[i].data.fd);
 						if (_clients[event_list[i].data.fd].request != "")
 							std::cerr << "[DEBUG] READ _clients[" <<event_list[i].data.fd<< "].request = " << _clients[event_list[i].data.fd].request << std::endl;
+						// if (_clients[event_list[i].data.fd].request == "")
+						// {
+						// 	std::cerr << "1 DELETE" << event_list[i].data.fd << std::endl;
+						// 	close(event_list[i].data.fd);
+						// 	_clients.erase(event_list[i].data.fd);
+						// }
 					}
 					else if ( event_list[i].events & EPOLLOUT )
 					{
-						Request(event_list[i].data.fd, _clients[event_list[i].data.fd]);
-						// if (_clients[event_list[i].data.fd].request != "")
-						// 	std::cerr << "[DEBUG] WRITE _clients[" << event_list[i].data.fd << "].request = " << _clients[event_list[i].data.fd].request << std::endl;
+						if (_clients[event_list[i].data.fd].request != "")
+							std::cerr << "[DEBUG] WRITE _clients[" << event_list[i].data.fd << "].request = " << _clients[event_list[i].data.fd].request << std::endl;
+						Request request(event_list[i].data.fd, _clients[event_list[i].data.fd]);
+
+						request.handle_request(_clients[event_list[i].data.fd]);
+						// if (_clients[event_list[i].data.fd].request == "")
+						// {
+						// 	std::cerr << "2 DELETE " << event_list[i].data.fd << std::endl;
+						// 	close(event_list[i].data.fd);
+						// 	_clients.erase(event_list[i].data.fd);
+						// 	// close_connection();
+
+						// }
 					}
 				}
             }

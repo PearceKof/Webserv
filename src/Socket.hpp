@@ -3,8 +3,6 @@
 # define SOCKET_HPP
 
 # include "Webserv.hpp"
-# include "Server.hpp"
-# include <fcntl.h>
 # include <netinet/in.h>
 
 class Server;

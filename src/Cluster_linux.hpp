@@ -1,25 +1,24 @@
 
 #ifndef CLUSTER_LINUX_HPP
 # define CLUSTER_LINUX_HPP
-# include <sys/epoll.h>
-# include "Server.hpp"
-# include "Socket.hpp"
+
 # include "Webserv.hpp"
-# include "Request.hpp"
+# include <sys/epoll.h>
 # include <sstream>
 # include <fstream>
-# include <string>
+# include <vector>
 # include <map>
-#include <algorithm>
+
 class Server;
 class Socket;
-class Location;
+
 struct client_info
 {
 	struct	epoll_event	events;
 	std::string			request;
 	Server				*server;
 };
+
 class Cluster
 {
 	private:
