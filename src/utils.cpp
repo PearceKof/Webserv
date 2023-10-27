@@ -34,3 +34,16 @@ std::string	read_request(int client_socket)
 	}
 	return request_str ;
 }
+
+std::string	daytime()
+{
+	time_t		timer;
+	struct tm	*timeinfo;
+	char		buffer[80];
+
+	time(&timer);
+	timeinfo = localtime(&timer);
+	strftime(buffer, 80, "%a %b %d %H:%M:%S %Y", timeinfo);
+	// std::string	time(buffer);
+	return std::string(buffer) ;
+}

@@ -77,11 +77,51 @@ void	Request::set_header_and_body(std::string request)
 
 void	Request::handle_request(client_info client)
 {
-	// if (_method == "GET")
-	// 	get_method(client);
+	if (_method == "GET")
+		get_method(client);
 	// else if (_method == "DELETE")
 	// 	delete_method(client);
 	// else if (_method == "POST")
 	// 	post_method(client);
 
+}
+
+void	Request::get_method(client_info client)
+{
+	if (_path == "")
+	{
+		// erreur 404
+		// send_response(client->server.get_root());
+	}
+	else if (_method == "GET")
+	{
+		Location location = client->server.get_locations()[_path];
+
+		if ( location.get_redirect() != "" )
+		{
+			redirection();
+			return ;
+		}
+
+		std::string	content = location.get_root();
+		if ( content == "" )
+			content = client->server.get_root();
+		
+		if ( location.get_method(GET) == false && client->server.get_method(GET) )
+		{
+			//error 403
+		}
+
+
+	}
+}
+
+void	Request::send_response(client_info client, std::string status_code, std::string content_type)
+{
+	std::string response = "http/1.1" + status_code + "\r\n";
+	response += "Date: " + get_time_of_day() + "\r\n";
+	response += "Server: " + client->server.get_server_name() + "\r\n";
+	response += "Content-Type: " + content_type + "\r\n";
+
+	std::string content;
 }

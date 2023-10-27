@@ -20,6 +20,7 @@ private:
 	void	set_method(std::string request);
 	void	set_path(std::string request, std::map<std::string, Location> locations);
 	void	set_header_and_body(std::string request);
+	void	send_response(client_info client, std::string status_code, std::string content_type);
 public:
 	Request(int client_fd, client_info &client);
 	~Request();
