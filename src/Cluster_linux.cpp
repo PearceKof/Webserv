@@ -139,6 +139,7 @@ void	Cluster::accept_new_connection(int new_client_fd, int epoll_fd, Socket *soc
 		_clients_sockets.push_back(fd);
 		ev_set.events = EPOLLIN | EPOLLOUT;
 		ev_set.data.fd = fd;
+		_clients[fd].socket = fd;
 		_clients[fd].events = ev_set;
 		_clients[fd].server = socket->get_server();
 		if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev_set) )
@@ -196,12 +197,12 @@ void    Cluster::setup()
 						_clients[event_list[i].data.fd].request = read_request(event_list[i].data.fd);
 						if (_clients[event_list[i].data.fd].request != "")
 							std::cerr << "[DEBUG] READ _clients[" <<event_list[i].data.fd<< "].request = " << _clients[event_list[i].data.fd].request << std::endl;
-						// if (_clients[event_list[i].data.fd].request == "")
-						// {
-						// 	std::cerr << "1 DELETE" << event_list[i].data.fd << std::endl;
-						// 	close(event_list[i].data.fd);
-						// 	_clients.erase(event_list[i].data.fd);
-						// }
+						if (_clients[event_list[i].data.fd].request == "")
+						{
+							std::cerr << "1 DELETE" << event_list[i].data.fd << std::endl;
+							close(event_list[i].data.fd);
+							_clients.erase(event_list[i].data.fd);
+						}
 					}
 					else if ( event_list[i].events & EPOLLOUT )
 					{
@@ -210,14 +211,6 @@ void    Cluster::setup()
 						Request request(event_list[i].data.fd, _clients[event_list[i].data.fd]);
 
 						request.handle_request(_clients[event_list[i].data.fd]);
-						// if (_clients[event_list[i].data.fd].request == "")
-						// {
-						// 	std::cerr << "2 DELETE " << event_list[i].data.fd << std::endl;
-						// 	close(event_list[i].data.fd);
-						// 	_clients.erase(event_list[i].data.fd);
-						// 	// close_connection();
-
-						// }
 					}
 				}
             }

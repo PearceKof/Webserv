@@ -71,7 +71,6 @@ void	Request::set_header_and_body(std::string request)
 	}
 	size_t	boundary_pos = request.find("boundary=") + 9;
 	_header["boundary"] = request.substr(boundary_pos, request.find("\r\n", boundary_pos));
-
 	_body = request.substr(request.find("\r\n", boundary_pos) + 2, std::string::npos);
 }
 
@@ -86,42 +85,79 @@ void	Request::handle_request(client_info client)
 
 }
 
+void	redirection(int client_sock, std::string redirection)
+{
+	std::string	response("HTTP/1.1 301 Moved Permanently\r\n");
+	response += "Location: ";
+	response += redirection;
+	response += "\r\n";
+	response += "Content-Length: 0\r\n\r\n";
+	send(client_sock, response.c_str(), response.size(), 0);
+}
+
 void	Request::get_method(client_info client)
 {
-	if (_path == "")
+	if ( _path == "" )
+		send_file(client, "404 not found", "text/html", client.server->get_root() + client.server->get_error_page(404));
+	else if ( _method == "GET" )
 	{
-		// erreur 404
-		// send_response(client->server.get_root());
-	}
-	else if (_method == "GET")
-	{
-		Location location = client->server.get_locations()[_path];
+		Location location = client.server->get_locations()[_path];
 
 		if ( location.get_redirect() != "" )
 		{
-			redirection();
+			redirection(client.socket, location.get_redirect());
 			return ;
 		}
 
 		std::string	content = location.get_root();
 		if ( content == "" )
-			content = client->server.get_root();
+			content = client.server->get_root();
 		
-		if ( location.get_method(GET) == false && client->server.get_method(GET) )
+		if ( location.get_allow_methods(GET) == false && client.server->get_allow_methods(GET) == false )
 		{
-			//error 403
+			if ( location.get_error_page(405) != "" )
+				content += location.get_error_page(405);
+			else
+				content += client.server->get_error_page(405);
+			send_file(client, "405 Method Not Allowed", "text/html", content);
 		}
+		else
+		{
+			if ( location.get_index() != "" )
+				content += location.get_index();
+			else
+				content += client.server->get_index();
 
+			send_file(client, "200 OK", "text/html", content);
+		} 
 
 	}
 }
 
-void	Request::send_response(client_info client, std::string status_code, std::string content_type)
+void	Request::send_file(client_info client, std::string status_code, std::string content_type, std::string file)
 {
-	std::string response = "http/1.1" + status_code + "\r\n";
-	response += "Date: " + get_time_of_day() + "\r\n";
-	response += "Server: " + client->server.get_server_name() + "\r\n";
+	std::string response = "http/1.1 " + status_code + "\r\n";
+	response += "Date: " + daytime() + "\r\n";
+	response += "Server: " + client.server->get_server_name() + "\r\n";
 	response += "Content-Type: " + content_type + "\r\n";
 
 	std::string content;
+	if ( file != "" )
+	{
+		std::ifstream content_stream(file.c_str());
+		std::stringstream stream;
+		stream << content_stream.rdbuf();
+		content = stream.str();
+	}
+	else
+		content = "<h1>ERROR 404 - Page not found</h1>";
+	response += "Content-Length: " + std::to_string(content.size()) + "\r\n\n";
+	response += content + "\r\n";
+
+	std::cerr << "[DEBUG] response sended:\n" << response << std::endl;
+	size_t nbyte = response.size();
+	while ( nbyte > 0 )
+		nbyte -= send(client.socket, response.c_str(), response.size(), 0);
+
+
 }

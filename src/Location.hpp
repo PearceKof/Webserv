@@ -37,6 +37,7 @@ public:
 	bool		get_auto_index() { return _auto_index ; };
 	bool		get_upload() { return _upload ; };
 	std::string	get_client_max_body_size() { return _client_max_body_size ; };
+	std::string	get_error_page(int index) { return _error_pages[index] ; };
 };
 
 #endif

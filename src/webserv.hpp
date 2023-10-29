@@ -22,7 +22,7 @@
 ------utils.cpp------
 */
 std::string	trim_config(const char *to_find, std::string& server_config);
-
+std::string	daytime();
 # define DEFAULT_CONFIG_PATH "./config/config_files/default.conf"
 
 enum methods

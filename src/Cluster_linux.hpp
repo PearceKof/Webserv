@@ -17,6 +17,7 @@ struct client_info
 	struct	epoll_event	events;
 	std::string			request;
 	Server				*server;
+	int					socket;
 };
 
 class Cluster
