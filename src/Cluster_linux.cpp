@@ -199,7 +199,9 @@ void    Cluster::setup()
 							std::cerr << "[DEBUG] READ _clients[" <<event_list[i].data.fd<< "].request = " << _clients[event_list[i].data.fd].request << std::endl;
 						if (_clients[event_list[i].data.fd].request == "")
 						{
-							std::cerr << "1 DELETE" << event_list[i].data.fd << std::endl;
+							std::cerr << "READ DELETE " << event_list[i].data.fd << std::endl;
+							if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, NULL) == -1)
+								throw std::runtime_error("epoll_ctl: delete");
 							close(event_list[i].data.fd);
 							_clients.erase(event_list[i].data.fd);
 						}
@@ -211,6 +213,16 @@ void    Cluster::setup()
 						Request request(event_list[i].data.fd, _clients[event_list[i].data.fd]);
 
 						request.handle_request(_clients[event_list[i].data.fd]);
+
+						_clients[event_list[i].data.fd].request == "";
+						// if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, NULL) == -1)
+						// 	throw std::runtime_error("epoll_ctl: delete");
+						// if (_clients[event_list[i].data.fd].request == "")
+						// {
+						// 	std::cerr << "WRITE DELETE " << event_list[i].data.fd << std::endl;
+						// 	close(event_list[i].data.fd);
+						// 	_clients.erase(event_list[i].data.fd);
+						// }
 					}
 				}
             }

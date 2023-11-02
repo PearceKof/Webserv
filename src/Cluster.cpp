@@ -115,7 +115,7 @@ std::string readFile(std::string filename)
    return buffer.str();
 }
 
-void    Cluster::setup_and_run()
+void    Cluster::setup()
 {
     int    kq = kqueue();
 
@@ -127,13 +127,7 @@ void    Cluster::setup_and_run()
 
     set_sockets(kq);
 
-	run(kq);
-    
-}
-
-void	Cluster::run(int &kq)
-{
-	while (1)
+    while (1)
     {
 		struct kevent ev_set;
         struct kevent ev_list[1024];
@@ -149,8 +143,8 @@ void	Cluster::run(int &kq)
             {
 				for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
 				{
-					/*std::cout << "i: " << i << std::endl;
-					std::cout << "j: " << j << std::endl;*/
+					// std::cout << "i: " << i << std::endl;
+					// std::cout << "j: " << j << std::endl;
 					if ( ev_list[i].ident == get_sockets()[j].get_server_socket_fd() )
 					{
 						socklen_t			addr_len = sizeof(get_sockets()[j].get_server_address());
@@ -165,16 +159,15 @@ void	Cluster::run(int &kq)
 						{
 							_clients_sockets.push_back(fd);
 							EV_SET(&ev_set, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-							_clients[fd].events = ev_set;
 							if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
 								std::cerr << "kevent failed to add" << std::endl;
 							else
 								std::cerr << "new connection accepted" << std::endl;
 						}
 					}
-					else if ( ev_list[i].flags & EV_EOF )
+					else if (ev_list[i].flags & EV_EOF)
 					{
-						EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
+						EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
 						if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
 							std::cerr << "kevent failed to delete" << std::endl;
 						//close and pop_back connection from _clients_sockets
