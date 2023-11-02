@@ -4,6 +4,9 @@
 
 # include "Webserv.hpp"
 
+#include <map>
+#include <string>
+
 struct client_info;
 class Cluster;
 class Location;

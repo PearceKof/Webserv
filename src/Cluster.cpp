@@ -98,7 +98,7 @@ void	Cluster::set_sockets(int &kq)
 		std::vector<std::pair<std::string, int> > listening_port = _servers[i].get_listening_port();
 		for ( size_t j = 0 ; j < listening_port.size() ; j++ )
 		{
-			Socket new_socket(listening_port[j].second);
+			Socket new_socket(listening_port[j].second, &_servers[i]);
 			_sockets.push_back(new_socket);
 			struct kevent ev_set;
 			EV_SET(&ev_set, new_socket.get_server_socket_fd(), EVFILT_READ, EV_ADD, 0, 0, NULL);
@@ -128,7 +128,6 @@ void    Cluster::setup_and_run()
     set_sockets(kq);
 
 	run(kq);
-    
 }
 
 void	Cluster::run(int &kq)
@@ -154,7 +153,7 @@ void	Cluster::run(int &kq)
 					if ( ev_list[i].ident == get_sockets()[j].get_server_socket_fd() )
 					{
 						socklen_t			addr_len = sizeof(get_sockets()[j].get_server_address());
-						struct sockaddr_in	addr = get_sockets()[j].get_server_address();
+						struct sockaddr_in	addr = *get_sockets()[j].get_server_address();
 						int fd = accept(ev_list[i].ident, (struct sockaddr *)&addr, &addr_len);
 						if ( fd == -1 )
 						{

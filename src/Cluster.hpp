@@ -17,6 +17,8 @@ struct client_info
 {
 	struct	kevent		events;
 	std::string			request;
+	Server				*server;
+	int					socket;
 };
 
 class Cluster
@@ -34,6 +36,7 @@ class Cluster
 	
 		void	config(std::string configFile);
 		void	setup_and_run();
+		void	run(int &kq);
 		void	print_all();
 	
 		size_t				server_size() { return _servers.size(); };
