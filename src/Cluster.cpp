@@ -98,7 +98,7 @@ void	Cluster::set_sockets(int &kq)
 		std::vector<std::pair<std::string, int> > listening_port = _servers[i].get_listening_port();
 		for ( size_t j = 0 ; j < listening_port.size() ; j++ )
 		{
-			Socket new_socket(listening_port[j].second);
+			Socket new_socket(listening_port[j].second, &_servers[i]);
 			_sockets.push_back(new_socket);
 			struct kevent ev_set;
 			EV_SET(&ev_set, new_socket.get_server_socket_fd(), EVFILT_READ, EV_ADD, 0, 0, NULL);
@@ -127,7 +127,65 @@ void    Cluster::setup()
 
     set_sockets(kq);
 
-    while (1)
+	run(kq);
+}
+
+void	Cluster::accept_new_connection(int new_client_fd, int kq, Socket *socket)
+{
+	struct kevent ev_set;
+	socklen_t addr_len = sizeof(socket->get_server_address());
+
+	std::cerr << "client attempt to connect " << new_client_fd << std::endl;
+	int fd = accept(new_client_fd, (struct sockaddr *)socket->get_server_address(), &addr_len);
+	if ( fd == -1 )
+	{
+		std::cerr << "connection refused." << std::endl;
+		close(fd);
+	}
+	else
+	{
+		if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
+		{
+			throw std::runtime_error("fcntl function failed");
+		}
+		_clients_sockets.push_back(fd);
+		ev_set.ident = fd;
+		EV_SET(&ev_set, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+		_clients[fd].socket = fd;
+		_clients[fd].server = socket->get_server();
+		_clients[fd].events = ev_set;
+		if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+			std::cerr << "kevent failed to add" << std::endl;
+		else
+			std::cerr << "new connection accepted" << std::endl;
+	}
+}
+
+Socket	*Cluster::is_a_listen_fd(int event_fd)
+{
+	for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
+	{
+		if (event_fd == get_sockets()[j].get_server_socket_fd())
+			return get_socket(j) ;
+	}
+	return NULL ;
+}
+
+void	Cluster::delete_client(struct kevent ev_list, int kq)
+{
+	struct kevent ev_set;
+	std::cerr << "DELETE client: " << ev_list.ident << std::endl;
+	ev_set = _clients[ev_list.ident].events;
+	EV_SET(&ev_set, ev_list.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+		std::cerr << "kevent failed to delete" << std::endl;
+	_clients.erase(ev_list.ident);
+	close(ev_list.ident);
+}
+
+void	Cluster::run(int &kq)
+{
+	while (1)
     {
 		struct kevent ev_set;
         struct kevent ev_list[1024];
@@ -141,55 +199,40 @@ void    Cluster::setup()
         {
             for ( size_t i = 0 ; i < num_events ; i++ )
             {
-				for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
+				std::cerr << "[DEBUG] event nb: " << i << " event: " << ev_list[i].filter << std::endl;
+				Socket *socket = is_a_listen_fd(ev_list[i].ident);
+				if ( socket )
+					accept_new_connection(ev_list[i].ident, kq, socket);
+				else if ( _clients.find(ev_list[i].ident) != _clients.end() )
 				{
-					// std::cout << "i: " << i << std::endl;
-					// std::cout << "j: " << j << std::endl;
-					if ( ev_list[i].ident == get_sockets()[j].get_server_socket_fd() )
+					if (ev_list[i].filter == EVFILT_READ)
 					{
-						socklen_t			addr_len = sizeof(get_sockets()[j].get_server_address());
-						struct sockaddr_in	addr = get_sockets()[j].get_server_address();
-						int fd = accept(ev_list[i].ident, (struct sockaddr *)&addr, &addr_len);
-						if ( fd == -1 )
-						{
-							std::cerr << "connection refused." << std::endl;
-							close(fd);
-						}
+						_clients[ev_list[i].ident].request = read_request(ev_list[i].ident);
+
+						if (_clients[ev_list[i].ident].request != "")
+							std::cerr << "[DEBUG] READ _clients[" <<ev_list[i].ident<< "].request = " << _clients[ev_list[i].ident].request << std::endl;
+
+						if (_clients[ev_list[i].ident].request == "")
+							delete_client(ev_list[i], kq);
 						else
 						{
-							_clients_sockets.push_back(fd);
-							EV_SET(&ev_set, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-							if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-								std::cerr << "kevent failed to add" << std::endl;
-							else
-								std::cerr << "new connection accepted" << std::endl;
+							ev_set = _clients[ev_list[i].ident].events;
+							EV_SET(&ev_set, ev_list[i].ident, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, 0);
+							if ( kevent(kq, &ev_set, 1, 0, 0, 0 ) )
+								std::cerr << "kevent failed" << std::endl;
 						}
 					}
-					else if (ev_list[i].flags & EV_EOF)
+					else if (ev_list[i].filterç == EVFILT_WRITE)
 					{
-						EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-						if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-							std::cerr << "kevent failed to delete" << std::endl;
-						//close and pop_back connection from _clients_sockets
-					}
-					else if (std::find(get_clients_sockets().begin(), get_clients_sockets().end(), ev_list[i].ident) != get_clients_sockets().end())
-					{
-						if (ev_list[i].filter == EVFILT_READ)
-						{
-							//need to parse the requests
-							std::string filecontent = readFile("www/test.html");
-							std::string response = "HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: 265\nServer: Baki/plain\n\n";
-							std::string htmlresponse(response);
-							htmlresponse.append(filecontent);
-							if (send(ev_list[i].ident, htmlresponse.c_str(), htmlresponse.length(), 0) == -1)
-								perror("send");
-							EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-							if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-								std::cerr << "kevent failed to delete" << std::endl;
-						}
-					}
+						if (_clients[ev_list[i].ident].request != "")
+							std::cerr << "[DEBUG] WRITE _clients[" << ev_list[i].ident << "].request = " << _clients[ev_list[i].ident].request << std::endl;
 
+						Request request(ev_list[i].ident, _clients[ev_list[i].ident]);
+
+						request.handle_request(_clients[ev_list[i].ident]);
+					}
 				}
+
             }
         }
     }

@@ -4,6 +4,9 @@
 
 # include "Webserv.hpp"
 
+#include <map>
+#include <string>
+
 class Location
 {
 private:

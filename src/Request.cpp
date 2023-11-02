@@ -221,8 +221,9 @@ void	Request::send_image(client_info client, std::string image, std::string resp
 	FILE	*img_file = fopen(image.c_str(), "rb");
 	if ( img_file == NULL )
 	{
-		std::cerr << "ERROR fopen with " << image << std::endl;
-		return;
+		_request_a_file = false;
+		send_response(client, "404 not found", _content_type, "");
+		return ;
 	}
 	fseek(img_file, 0L, SEEK_END);
 	size_t	size = ftell(img_file);
@@ -247,10 +248,10 @@ void	Request::send_image(client_info client, std::string image, std::string resp
 			ret -= send(client.socket, response.c_str(), response.size(), 0);
 
 		}
-std::cerr << "stop loading: "<< ret << std::endl;
+		std::cerr << "stop loading: "<< ret << std::endl;
 		std::cerr << "sended:\n[" << response << "] to client " << client.socket << "size of buffer=" << size << " " << response.size() << std::endl;
 		stream.close();
-		delete buffer;
+		delete[] buffer;
 		buffer = nullptr;
 	}
 }
@@ -270,7 +271,6 @@ void	Request::send_response(client_info client, std::string status_code, std::st
 		// 	nbyte -= send(client.socket, response.c_str(), response.size(), 0);
 		file = "www" + file;
 		send_image(client, file, response);
-		std::cerr << "sended " << file << " to client " << client.socket << std::endl;
 		return ;
 	}
 	else if ( file != "" )

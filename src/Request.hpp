@@ -3,11 +3,12 @@
 # define REQUEST_HPP
 
 # include "Webserv.hpp"
+# include <string>
+# include <map>
 
 struct client_info;
 class Cluster;
 class Location;
-
 class Request
 {
 private:
