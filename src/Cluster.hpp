@@ -10,6 +10,8 @@
 # include <fstream>
 # include <string>
 # include <map>
+# include <vector>
+
 class Server;
 class Socket;
 
@@ -30,6 +32,8 @@ class Cluster
 		std::vector<int>			_clients_sockets;
 
 		void	set_sockets(int &kq);
+		void	accept_new_connection(int new_client_fd, int kq, Socket *socket);
+		Socket	*is_a_listen_fd(int event_fd);
 	public:
 		Cluster();
 		~Cluster();
@@ -40,6 +44,7 @@ class Cluster
 		void	print_all();
 	
 		size_t				server_size() { return _servers.size(); };
+		Socket				*get_socket(int index) { return &_sockets[index] ; };
 		std::vector<Socket> get_sockets() { return _sockets ; };
 		std::vector<int>	&get_clients_sockets() { return _clients_sockets ; };
 		int					get_client_socket(int index) { return _clients_sockets[index] ; };

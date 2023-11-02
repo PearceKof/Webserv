@@ -15,7 +15,7 @@ int	main(int ac, char **av)
 	{
 		cluster.config(av[1]);
 		cluster.print_all();
-		cluster.setup();
+		cluster.setup_and_run();
 	}
 	catch (std::exception &e)
 	{
