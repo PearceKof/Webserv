@@ -171,6 +171,18 @@ Socket	*Cluster::is_a_listen_fd(int event_fd)
 	return NULL ;
 }
 
+void	Cluster::delete_client(struct kevent ev_list, int kq)
+{
+	struct kevent ev_set;
+	std::cerr << "DELETE client: " << ev_list.ident << std::endl;
+	ev_set = _clients[ev_list.ident].events;
+	EV_SET(&ev_set, ev_list.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+		std::cerr << "kevent failed to delete" << std::endl;
+	_clients.erase(ev_list.ident);
+	close(ev_list.ident);
+}
+
 void	Cluster::run(int &kq)
 {
 	while (1)
@@ -197,31 +209,25 @@ void	Cluster::run(int &kq)
 					if (filter == EVFILT_READ)
 					{
 						_clients[ev_list[i].ident].request = read_request(ev_list[i].ident);
+
 						if (_clients[ev_list[i].ident].request != "")
 							std::cerr << "[DEBUG] READ _clients[" <<ev_list[i].ident<< "].request = " << _clients[ev_list[i].ident].request << std::endl;
+
 						if (_clients[ev_list[i].ident].request == "")
-						{
-							std::cerr << "DELETE client: " << ev_list[i].ident << std::endl;
-							ev_set = _clients[ev_list[i].ident].events;
-							EV_SET(&ev_set, ev_list[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-							if ( kevent(kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-								std::cerr << "kevent failed to delete" << std::endl;
-							_clients.erase(ev_list[i].ident);
-							close(ev_list[i].ident);
-						}
+							delete_client(ev_list[i], kq);
 						else
 						{
 							ev_set = _clients[ev_list[i].ident].events;
 							EV_SET(&ev_set, ev_list[i].ident, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, 0);
 							if ( kevent(kq, &ev_set, 1, 0, 0, 0 ) )
 								std::cerr << "kevent failed" << std::endl;
-
 						}
 					}
 					else if (filter == EVFILT_WRITE)
 					{
 						if (_clients[ev_list[i].ident].request != "")
 							std::cerr << "[DEBUG] WRITE _clients[" << ev_list[i].ident << "].request = " << _clients[ev_list[i].ident].request << std::endl;
+
 						Request request(ev_list[i].ident, _clients[ev_list[i].ident]);
 
 						request.handle_request(_clients[ev_list[i].ident]);

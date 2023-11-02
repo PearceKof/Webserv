@@ -34,6 +34,7 @@ class Cluster
 		void	set_sockets(int &kq);
 		void	accept_new_connection(int new_client_fd, int kq, Socket *socket);
 		Socket	*is_a_listen_fd(int event_fd);
+		void	delete_client(struct kevent ev_list, int kq);
 	public:
 		Cluster();
 		~Cluster();
