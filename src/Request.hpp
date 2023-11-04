@@ -3,12 +3,15 @@
 # define REQUEST_HPP
 
 # include "Webserv.hpp"
+# include "Mime.hpp"
 # include <string>
 # include <map>
 
 struct client_info;
+class Mime;
 class Cluster;
 class Location;
+
 class Request
 {
 private:
@@ -18,6 +21,7 @@ private:
 	std::string	_body;
 	bool		_request_a_file;
 	std::string	_content_type;
+	Mime						_mime;
 
 	Request();
 	void	set_method(std::string request);

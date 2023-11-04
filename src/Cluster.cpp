@@ -222,7 +222,7 @@ void	Cluster::run(int &kq)
 								std::cerr << "kevent failed" << std::endl;
 						}
 					}
-					else if (ev_list[i].filterç == EVFILT_WRITE)
+					else if (ev_list[i].filter == EVFILT_WRITE)
 					{
 						if (_clients[ev_list[i].ident].request != "")
 							std::cerr << "[DEBUG] WRITE _clients[" << ev_list[i].ident << "].request = " << _clients[ev_list[i].ident].request << std::endl;

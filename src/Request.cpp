@@ -38,7 +38,7 @@ void	Request::set_path(std::string request, std::map<std::string, Location> loca
 {
 	size_t begin = request.find("/");
 	size_t end;
-	std::string extension;
+	std::string extension = "default";
 
 	if ( begin != std::string::npos )
 	{
@@ -47,12 +47,7 @@ void	Request::set_path(std::string request, std::map<std::string, Location> loca
 	}
 	if ( !is_valid_path(locations, _path) )
 		_path = "null";
-	if (request.find(".jpg") != std::string::npos
-		|| request.find(".jpeg") != std::string::npos
-		|| request.find(".ico") != std::string::npos
-		|| request.find(".gif") != std::string::npos
-		|| request.find(".png") != std::string::npos
-		|| request.find(".txt") != std::string::npos)
+	if ( _mime.is_a_file(request) )
 	{
 		_request_a_file = true;
 		begin = request.find('/');
@@ -61,19 +56,9 @@ void	Request::set_path(std::string request, std::map<std::string, Location> loca
 		begin = request.find('.');
 		end = request.find(' ', begin);
 		extension = request.substr(begin, end - begin);
-		if ( extension == ".jpg")
-		_content_type = "image/jpeg";
-		else if ( extension == ".jpeg")
-			_content_type = "image/jpeg";
-		else if ( extension == ".ico")
-			_content_type = "image/x-icon";
-		else if ( extension == ".gif")
-			_content_type = "image/gif";
-		else if ( extension == ".png")
-			_content_type = "image/png";
-		else if ( extension == ".txt")
-			_content_type = "text/plain";
 	}
+
+	_content_type = _mime.get_content_type(extension);
 }
 
 void	Request::set_header_and_body(std::string request)
@@ -128,7 +113,7 @@ void	Request::get_method(client_info client)
 	if ( _path == "null" )
 		send_response(client, "404 not found", "text/html", client.server->get_root() + client.server->get_error_page(404));
 	else if ( _request_a_file == true )
-		send_response(client, "200 OK", _content_type, _path);
+		send_response(client, "202 OK", _content_type, _path);
 	else if ( _method == "GET" )
 	{
 		Location location = client.server->get_locations()[_path];
@@ -170,52 +155,6 @@ void loadFile(const std::string &fileName, std::stringstream &stream) {
 	input_file.close();
 }
 
-// void	Request::send_image(client_info client, std::string image)
-// {
-// 	FILE	*img_file = fopen(image.c_str(), "rb");
-// 	if ( img_file == NULL )
-// 	{
-// 		std::cerr << "ERROR fopen with " << image << std::endl;
-// 		return;
-// 	}
-// 	fseek(img_file, 0L, SEEK_END);
-// 	size_t	size = ftell(img_file);
-
-// 	// std::string response = "http/1.1 200 OK\r\n";
-// 	// response += "Date: " + daytime() + "\r\n";
-// 	// response += "Server: " + client.server->get_server_name() + "\r\n";
-// 	// response += "Content-Type: " + _content_type + "\r\n";
-// 	std::string response = "Content-Lenght: " + std::to_string(size) + "\r\n\r\n";
-
-// 	std::cerr << response << "sended to " << client.socket << std::endl;
-// 	size_t nbyte = response.size();
-// 	while ( nbyte > 0 )
-// 		nbyte -= send(client.socket, response.c_str(), response.size(), 0);
-// 	int c;
-// 	std::vector<int> v;
-// 	v.resize(size);
-// 	while ( (c = fgetc(img_file)) != EOF )
-// 	{
-// 		v.push_back(c);
-// 	}
-// 	nbyte = size;
-// 	while (nbyte > 0)
-// 		nbyte -= send(client.socket, v.data(), size, 0);
-// 	fclose(img_file);
-
-// 	// int fd = open(image.c_str(), O_RDONLY);
-// 	// unsigned char buf[120];
-// 	// v.resize(size);
-// 	// ssize_t ret = read(fd, buf, 120);
-// 	// // send(client.socket, buf, ret, 0);
-// 	// while ( 0 < read(fd, buf, 120) )
-// 	// {
-// 	// 	v.push_back(buf);
-// 	// }
-// 	// send(client.socket, buf, ret, 0);
-// 	// close(fd);
-// }
-
 void	Request::send_image(client_info client, std::string image, std::string response)
 {
 	FILE	*img_file = fopen(image.c_str(), "rb");
@@ -243,13 +182,7 @@ void	Request::send_image(client_info client, std::string image, std::string resp
 
 		ssize_t ret = response.size();
 		while (ret > 0)
-		{
-			std::cerr << "image loading: "<< ret << std::endl;
 			ret -= send(client.socket, response.c_str(), response.size(), 0);
-
-		}
-		std::cerr << "stop loading: "<< ret << std::endl;
-		std::cerr << "sended:\n[" << response << "] to client " << client.socket << "size of buffer=" << size << " " << response.size() << std::endl;
 		stream.close();
 		delete[] buffer;
 		buffer = nullptr;
@@ -266,9 +199,6 @@ void	Request::send_response(client_info client, std::string status_code, std::st
 	std::string content;
 	if ( _request_a_file == true )
 	{
-		// size_t nbyte = response.size();
-		// wile ( nbyte > 0 )
-		// 	nbyte -= send(client.socket, response.c_str(), response.size(), 0);
 		file = "www" + file;
 		send_image(client, file, response);
 		return ;

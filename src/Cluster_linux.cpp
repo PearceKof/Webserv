@@ -7,6 +7,7 @@ Cluster::Cluster()
 
 Cluster::~Cluster()
 {
+	std::cerr << "CLUSTER destructor called" << std::endl;
 }
 
 static void	clean_config_string(std::string &config)
@@ -137,7 +138,7 @@ void	Cluster::accept_new_connection(int new_client_fd, int epoll_fd, Socket *soc
 			throw std::runtime_error("fcntl function failed");
 		}
 		_clients_sockets.push_back(fd);
-		ev_set.events = EPOLLIN | EPOLLOUT;
+		ev_set.events = EPOLLIN;
 		ev_set.data.fd = fd;
 		_clients[fd].socket = fd;
 		_clients[fd].events = ev_set;
@@ -159,7 +160,7 @@ Socket	*Cluster::is_a_listen_fd(int event_fd)
 	return NULL ;
 }
 
-void    Cluster::setup()
+void    Cluster::setup_and_run()
 {
     int    epoll_fd = epoll_create1(0);
 
@@ -171,6 +172,11 @@ void    Cluster::setup()
 
     set_sockets(epoll_fd);
 
+	run(epoll_fd);
+}
+
+void	Cluster::run(int &epoll_fd)
+{
 	struct epoll_event ev_set;
     struct epoll_event event_list[1024];
 	struct sockaddr_in *addr;
@@ -189,7 +195,6 @@ void    Cluster::setup()
 				Socket *socket = is_a_listen_fd(event_list[i].data.fd);
 				if ( socket )
 					accept_new_connection(event_list[i].data.fd, epoll_fd, socket);
-				// else if ( std::find(get_clients_sockets().begin(), get_clients_sockets().end(), event_list[i].data.fd) != get_clients_sockets().end() )
 				else if ( _clients.find(event_list[i].data.fd) != _clients.end() )
 				{
 					if ( event_list[i].events & EPOLLIN )
@@ -205,6 +210,13 @@ void    Cluster::setup()
 							close(event_list[i].data.fd);
 							_clients.erase(event_list[i].data.fd);
 						}
+						else
+						{
+							ev_set.data.fd = event_list[i].data.fd;
+							ev_set.events = EPOLLOUT;
+							if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, event_list[i].data.fd, &ev_set) == -1)
+								perror("epoll_ctl");
+						}
 					}
 					else if ( event_list[i].events & EPOLLOUT )
 					{
@@ -215,6 +227,10 @@ void    Cluster::setup()
 						request.handle_request(_clients[event_list[i].data.fd]);
 
 						_clients[event_list[i].data.fd].request == "";
+						ev_set.data.fd = event_list[i].data.fd;
+						if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, &ev_set) == -1)
+							perror("epoll_ctl");
+							close(event_list[i].data.fd);
 						// if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, NULL) == -1)
 						// 	throw std::runtime_error("epoll_ctl: delete");
 						// if (_clients[event_list[i].data.fd].request == "")
