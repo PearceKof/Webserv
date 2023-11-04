@@ -115,7 +115,7 @@ std::string readFile(std::string filename)
    return buffer.str();
 }
 
-void    Cluster::setup()
+void    Cluster::setup_and_run()
 {
     int    kq = kqueue();
 
