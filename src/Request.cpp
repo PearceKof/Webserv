@@ -45,7 +45,7 @@ void	Request::set_path(std::string request, std::map<std::string, Location> loca
 		end = request.find(' ', begin);
 		_path = request.substr(begin, end - begin);
 	}
-	if ( !is_valid_path(locations, _path) )
+	if ( !is_directory(_path) && !is_valid_path(locations, _path) )
 		_path = "null";
 	if ( _mime.is_a_file(request) )
 	{
@@ -108,15 +108,69 @@ void	redirection(int client_sock, std::string redirection)
 	send(client_sock, response.c_str(), response.size(), 0);
 }
 
+void	Request::send_auto_index(client_info client)
+{
+	_path = "." + _path;
+	DIR *dir = opendir(_path.c_str());
+	if ( dir == NULL )
+		std::cerr << "error 403" << std::endl;
+
+	std::string response = "http/1.1 200 OK\r\n";
+	response += "Date: " + daytime() + "\r\n";
+	response += "Server: " + client.server->get_server_name() + "\r\n";
+	response += "Content-Type: text/html\r\n";
+	std::string body = "<html><head><title>Directory Listing</title></head><body><h1>Directory Listing</h1><table>";
+	body += "<tr><td><a href=\"../\">../</a></td><td>-</td></tr>";
+
+	struct dirent *dirent;
+
+	while ( (dirent = readdir(dir)) != NULL )
+	{
+		std::string name = dirent->d_name;
+		std::string path = _path + "/" + name;
+
+		std::string size;
+		if ( dirent->d_type == DT_REG)
+		{
+			struct stat st;
+			if (stat(path.c_str(), &st) == 0)
+			{
+				std::stringstream ss;
+				ss << st.st_size;
+				size = ss.str() + " bytes";
+			}
+		}
+		else
+			size = "-";
+		
+		if ( dirent->d_type != DT_DIR )
+			body += "<tr><td><a href=\"" + _path + "/" + name + "\">" + name + "</a></td><td>" + size + "</td></tr>";
+	}
+	body += "</table></body></html>";
+	closedir(dir);
+	response += "Content-lenght: " + std::to_string(body.size()) + "\r\n\r\n";
+	response += body;
+	size_t nbyte = response.size();
+	while ( nbyte > 0 )
+		nbyte -= send(client.socket, response.c_str(), response.size(), 0);
+}
+
 void	Request::get_method(client_info client)
 {
+	Location location = client.server->get_locations()[_path];
+	// std::cerr << "is " << _path << " a directory: " << is_directory(_path) << std::endl;
+	if ( is_directory(_path) )
+	{
+		if ( location.get_auto_index() == true || client.server->get_auto_index() == true )
+			send_auto_index(client);
+		return;
+	}
 	if ( _path == "null" )
 		send_response(client, "404 not found", "text/html", client.server->get_root() + client.server->get_error_page(404));
 	else if ( _request_a_file == true )
 		send_response(client, "202 OK", _content_type, _path);
 	else if ( _method == "GET" )
 	{
-		Location location = client.server->get_locations()[_path];
 
 		if ( location.get_redirect() != "" )
 		{
@@ -160,6 +214,7 @@ void	Request::send_image(client_info client, std::string image, std::string resp
 	FILE	*img_file = fopen(image.c_str(), "rb");
 	if ( img_file == NULL )
 	{
+
 		_request_a_file = false;
 		send_response(client, "404 not found", _content_type, "");
 		return ;
@@ -198,11 +253,7 @@ void	Request::send_response(client_info client, std::string status_code, std::st
 
 	std::string content;
 	if ( _request_a_file == true )
-	{
-		file = "www" + file;
-		send_image(client, file, response);
-		return ;
-	}
+		send_image(client, ASSETS_DIR + file, response);
 	else if ( file != "" )
 	{
 		std::ifstream content_stream(file.c_str());

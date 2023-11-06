@@ -35,6 +35,7 @@ class Cluster
 		Cluster();
 		~Cluster();
 		void	config(std::string configFile);
+		bool	is_valid_config();
 		void	setup_and_run();
 		void	run(int &kq);
 

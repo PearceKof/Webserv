@@ -54,7 +54,7 @@ public:
 	bool		get_upload() { return _upload ; };
 	int			get_client_max_body_size() { return _client_max_body_size ; };
 	std::string	get_error_page(int index) { return _error_pages[index] ; };
-
+	bool		is_valid_server();
 
 
 };

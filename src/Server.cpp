@@ -226,3 +226,17 @@ void	Server::set_cgi_extension(std::string server_config)
 	}
 	_cgi_extension.push_back(tmp.substr(begin, end - begin));
 }
+
+bool	Server::is_valid_server()
+{
+	if ( _listening_port.size() < 1 )
+	{
+		std::cerr << "Error: the server must have at least 1 host:port" << std::endl;
+		return false ;
+	}
+
+	if ( _server_name == "" )
+		_server_name = "default";
+
+	return true ;;
+}

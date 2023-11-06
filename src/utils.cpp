@@ -1,6 +1,20 @@
 
 #include "Webserv.hpp"
 
+bool	is_directory( std::string path )
+{
+	struct stat buf;
+
+	if ( path == "/")
+		return false ;
+
+	path = "." + path;
+	if ( stat(path.c_str(), &buf) )
+		return false ;
+
+	return true ;
+}
+
 std::string	trim_config(const char *to_find, std::string& server_config)
 {
 	size_t	begin;

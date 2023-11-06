@@ -318,3 +318,13 @@ void	Cluster::print_all()
 		std::cout << "====================================" << std::endl;
 	}
 }
+
+bool	Cluster::is_valid_config()
+{
+	for ( size_t i = 0 ; i < _servers.size() ; i++ )
+	{
+		if ( _servers[i].is_valid_server() == false )
+			return false ;
+	}
+	return true ;
+}

@@ -6,6 +6,9 @@
 # include "Mime.hpp"
 # include <string>
 # include <map>
+# include <dirent.h>
+# include <sys/stat.h>
+// # include <sys/type.h>
 
 struct client_info;
 class Mime;
@@ -20,7 +23,7 @@ private:
 	std::map<std::string , std::string>	_header;
 	std::string	_body;
 	bool		_request_a_file;
-	std::string	_content_type;
+	std::string					_content_type;
 	Mime						_mime;
 
 	Request();
@@ -29,6 +32,7 @@ private:
 	void	set_header_and_body(std::string request);
 	void	send_response(client_info client, std::string status_code, std::string content_type, std::string file);
 	void	send_image(client_info client, std::string image, std::string response);
+	void	send_auto_index(client_info client);
 public:
 	Request(int client_fd, client_info &client);
 	~Request();

@@ -40,9 +40,10 @@ class Cluster
 		~Cluster();
 	
 		void	config(std::string configFile);
+		void	print_all();
+		bool	is_valid_config();
 		void	setup_and_run();
 		void	run(int &kq);
-		void	print_all();
 	
 		size_t				server_size() { return _servers.size(); };
 		Socket				*get_socket(int index) { return &_sockets[index] ; };
