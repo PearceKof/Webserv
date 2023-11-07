@@ -230,6 +230,8 @@ void	Cluster::run(int &kq)
 						Request request(ev_list[i].ident, _clients[ev_list[i].ident]);
 
 						request.handle_request(_clients[ev_list[i].ident]);
+						_clients[ev_list[i].ident].request = "";
+						close(ev_list[i].ident);
 					}
 				}
 

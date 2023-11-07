@@ -230,7 +230,7 @@ void	Cluster::run(int &epoll_fd)
 						ev_set.data.fd = event_list[i].data.fd;
 						if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, &ev_set) == -1)
 							perror("epoll_ctl");
-							close(event_list[i].data.fd);
+						close(event_list[i].data.fd);
 						// if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, NULL) == -1)
 						// 	throw std::runtime_error("epoll_ctl: delete");
 						// if (_clients[event_list[i].data.fd].request == "")

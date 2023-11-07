@@ -113,7 +113,10 @@ void	Request::send_auto_index(client_info client)
 	_path = "." + _path;
 	DIR *dir = opendir(_path.c_str());
 	if ( dir == NULL )
+	{
 		std::cerr << "error 403" << std::endl;
+		return ;
+	}
 
 	std::string response = "http/1.1 200 OK\r\n";
 	response += "Date: " + daytime() + "\r\n";
@@ -168,7 +171,7 @@ void	Request::get_method(client_info client)
 	if ( _path == "null" )
 		send_response(client, "404 not found", "text/html", client.server->get_root() + client.server->get_error_page(404));
 	else if ( _request_a_file == true )
-		send_response(client, "202 OK", _content_type, _path);
+		send_response(client, "200 OK", _content_type, _path);
 	else if ( _method == "GET" )
 	{
 
@@ -211,10 +214,10 @@ void loadFile(const std::string &fileName, std::stringstream &stream) {
 
 void	Request::send_image(client_info client, std::string image, std::string response)
 {
+	std::cerr << "send_image" << std::endl;
 	FILE	*img_file = fopen(image.c_str(), "rb");
 	if ( img_file == NULL )
 	{
-
 		_request_a_file = false;
 		send_response(client, "404 not found", _content_type, "");
 		return ;
@@ -232,6 +235,8 @@ void	Request::send_image(client_info client, std::string image, std::string resp
 		bzero(buffer, size);
 		stream.read(buffer, size);
 
+		std::cerr << "send_image debug a " << std::to_string(size) << " response: " <<  response << std::endl;
+
 		for (size_t i = 0; i < size ; i++)
 			response.push_back(buffer[i]);
 
@@ -240,6 +245,7 @@ void	Request::send_image(client_info client, std::string image, std::string resp
 			ret -= send(client.socket, response.c_str(), response.size(), 0);
 		stream.close();
 		delete[] buffer;
+		std::cerr << "send_image debug b " << std::to_string(size) << " response: " <<  response << std::endl;
 		buffer = nullptr;
 	}
 }
@@ -251,9 +257,13 @@ void	Request::send_response(client_info client, std::string status_code, std::st
 	response += "Server: " + client.server->get_server_name() + "\r\n";
 	response += "Content-Type: " + content_type + "\r\n";
 
+	std::cerr << "DEBUG" << std::endl;
 	std::string content;
 	if ( _request_a_file == true )
+	{
 		send_image(client, ASSETS_DIR + file, response);
+		return ;
+	}
 	else if ( file != "" )
 	{
 		std::ifstream content_stream(file.c_str());
