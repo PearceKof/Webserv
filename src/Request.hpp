@@ -39,6 +39,7 @@ public:
 
 	void	handle_request(client_info client);
 	void	get_method(client_info client);
+	std::string	error_handler(client_info client, status_code status);
 };
 
 std::string	read_request(int client_socket);
