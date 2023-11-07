@@ -158,6 +158,9 @@ void	Request::send_auto_index(client_info client)
 		nbyte -= send(client.socket, response.c_str(), response.size(), 0);
 }
 
+void error(client_info client, int status_code)
+{}
+
 void	Request::get_method(client_info client)
 {
 	Location location = client.server->get_locations()[_path];

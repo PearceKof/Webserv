@@ -4,6 +4,7 @@
 Server::Server(std::string server_config) : _auto_index(false), _upload(false), _client_max_body_size(1000000)
 {
 	set_locations(server_config);
+	set_error_pages(server_config);
 	set_attributs(server_config);
 	set_allow_methods(server_config);
 	set_listen(server_config);
@@ -12,6 +13,35 @@ Server::Server(std::string server_config) : _auto_index(false), _upload(false), 
 
 Server::~Server()
 {
+}
+
+void	Server::set_error_pages(std::string server_config)
+{
+	size_t	begin;
+	size_t	end;
+	std::string	error_path;
+	std::string	tmp;
+	int	error_index;
+
+	begin = server_config.find("error_page");
+	while ( begin != std::string::npos )
+	{
+		end = server_config.find('\n', begin);
+		tmp = server_config.substr(begin, end - begin + 1);
+		server_config.erase(begin, end - begin + 1);
+		begin = tmp.find(' ') + 1;
+		end = tmp.find(' ', begin);
+		error_path = tmp.substr(begin, end - begin);
+		if ( error_path.find_first_not_of("0123456789") == std::string::npos )
+		{
+			begin = tmp.find('/', end);
+			end = tmp.find('\n', begin);
+			std::istringstream(error_path) >> error_index;
+			_error_pages[error_index] = tmp.substr(begin, end - begin);
+			// std::cerr << "DEBUG 1 begin = " << begin << " end = " << end << "\n _error_pages= [" << _error_pages[error_index] << "]" << std::endl;
+		}
+		begin = begin = server_config.find("error_page");
+	}
 }
 
 void	Server::set_locations(std::string& server_config)
@@ -83,33 +113,6 @@ void	Server::set_attributs(std::string& server_config)
 	if ( !(trim_config("autoindex", server_config).compare("on")) )
 		_upload = true;
 	
-}
-
-void	Server::set_error_pages(std::string server_config)
-{
-	size_t	begin;
-	size_t	end;
-	std::string	error_path;
-	std::string	tmp;
-	int	error_index;
-
-	begin = server_config.find("error_page");
-	while ( begin != std::string::npos + 11 )
-	{
-		end = server_config.find('\n');
-		tmp = server_config.substr(begin, end - begin);
-		server_config.erase(begin, end - begin + 1);
-		begin += 11;
-		end = tmp.find(' ', begin);
-		error_path = tmp.substr(begin, end - begin);
-		if (error_path.find_first_not_of("0123456789") == std::string::npos) {
-			begin = tmp.find('/', end);
-			end = tmp.find('\n', begin);
-			std::istringstream(error_path) >> error_index;
-			_error_pages[error_index] = tmp.substr(begin, end - begin);
-		}
-		begin = begin = server_config.find("error_page");
-	}
 }
 
 void	Server::set_allow_methods(std::string location_config)
