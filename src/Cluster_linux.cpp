@@ -199,6 +199,7 @@ void	Cluster::run(int &epoll_fd)
 				{
 					if ( event_list[i].events & EPOLLIN )
 					{
+						read_event(event_list, );
 						_clients[event_list[i].data.fd].request = read_request(event_list[i].data.fd);
 						if (_clients[event_list[i].data.fd].request != "")
 							std::cerr << "[DEBUG] READ _clients[" <<event_list[i].data.fd<< "].request = " << _clients[event_list[i].data.fd].request << std::endl;

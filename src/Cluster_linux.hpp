@@ -26,7 +26,6 @@ class Cluster
 		std::vector<Server>			_servers;
 		std::vector<Socket>			_sockets;
 		std::map<int, client_info>	_clients;
-		std::vector<int>	_clients_sockets;
 
 		void	set_sockets(int &kq);
 		void	accept_new_connection(int new_client_fd, int epoll_fd, Socket *socket);
