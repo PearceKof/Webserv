@@ -158,9 +158,6 @@ void	Request::send_auto_index(client_info client)
 		nbyte -= send(client.socket, response.c_str(), response.size(), 0);
 }
 
-void error(client_info client, int status_code)
-{}
-
 void	Request::get_method(client_info client)
 {
 	Location location = client.server->get_locations()[_path];
@@ -253,6 +250,21 @@ void	Request::send_image(client_info client, std::string image, std::string resp
 	}
 }
 
+std::string	error_handler(client_info client, std::string status_code)
+{
+	std::string	file;
+	std::string	content;
+
+	file = client.server->get_error_page(status_code);
+
+	std::ifstream	content_stream(file.c_str());
+	std::stringstream stream;
+
+	stream << content_stream.rdbuf();
+	content = stream.str();
+	return(content);
+}
+
 void	Request::send_response(client_info client, std::string status_code, std::string content_type, std::string file)
 {
 	std::string response = "http/1.1 " + status_code + "\r\n";
@@ -274,8 +286,9 @@ void	Request::send_response(client_info client, std::string status_code, std::st
 		stream << content_stream.rdbuf();
 		content = stream.str();
 	}
-	else
-		content = "<h1>ERROR 404 - Page not found</h1>";
+	else if (status_code > 400)
+		error_handler(client, status_code);
+		
 	response += "Content-Length: " + std::to_string(content.size()) + "\r\n\n";
 	response += content + "\r\n";
 
