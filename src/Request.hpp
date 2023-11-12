@@ -58,7 +58,7 @@ class Request
 
 		void	handle_request();
 		void	handle_GET();
-		// std::string	error_handler(client_info client, int status_code);
+		std::string	error_handler(int status_code);
 
 		std::string&	get_request() { return _request ; };
 		std::string&	get_response() { return _response ; };

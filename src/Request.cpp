@@ -372,6 +372,25 @@ void	Request::send_image(std::string image, std::string response)
 	}
 }
 
+std::string	Request::error_handler(int status_code)
+{
+	std::string	file;
+	std::string	content;
+
+	file = _server->get_error_page(status_code);
+
+	std::ifstream	content_stream(file.c_str());
+	std::stringstream stream;
+
+	stream << content_stream.rdbuf();
+	content = stream.str();
+
+	if ( content == "")
+		content = "<h1>" + std::to_string(status_code) + "</h1>";
+
+	return(content);
+}
+
 void	Request::send_response(std::string status_code, std::string content_type, std::string file)
 {
 	std::string response = "http/1.1 " + status_code + "\r\n";
@@ -395,7 +414,8 @@ void	Request::send_response(std::string status_code, std::string content_type, s
 		content = stream.str();
 	}
 	else
-		content = "<h1>ERROR 404 - Page not found</h1>";
+		error_handler(400);
+		
 	response += "Content-Length: " + std::to_string(content.size()) + "\r\n\n";
 	response += content + "\r\n";
 
