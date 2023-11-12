@@ -31,24 +31,6 @@ std::string	trim_config(const char *to_find, std::string& server_config)
 	return "" ;
 }
 
-std::string	read_request(int client_socket)
-{
-	std::string	request_str = "";
-	char buffer[121];
-	bzero(buffer, 121);
-
-	int byte_readed = read(client_socket, buffer, 120);
-
-	while ( 0 < byte_readed )
-	{
-		for ( int i = 0 ; i < byte_readed ; i++ )
-			request_str.push_back(buffer[i]);
-
-		byte_readed = read(client_socket, buffer, 120);
-	}
-	return request_str ;
-}
-
 std::string	daytime()
 {
 	time_t		timer;

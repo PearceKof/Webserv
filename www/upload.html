@@ -5,9 +5,18 @@
 			<center>
 				<h1>Webserv</h1>
 				<h2>Upload</h2>
-
+				<h3>multipart transfer: </h3>
+					<form method="POST" enctype="multipart/form-data" target="_blank">
+						<input type="file" name="file">
+						<input type="submit" value="Upload">
+					</form>
+				<h3>chunked transfer: </h3>
+					<form method="POST" enctype="multipart/form-data" Transfer-Encoding="chunked" target="_blank">
+						<input type="file" name="file">
+						<input type="submit" value="Upload">
+					</form>
 				<p>here for upload wip</p>
-				<h3 style="color:whitesmoke;">Click <a href="/" style="color:red;"> HERE</a> back to homepage </h3>
+				<h3 style="color:whitesmoke;">Click <a href="/" style="color:rgb(255, 3, 3);"> HERE</a> back to homepage </h3>
 			</center>
 		</FONT>
 

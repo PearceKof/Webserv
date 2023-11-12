@@ -3,11 +3,18 @@
 
 Cluster::Cluster()
 {
+	_kq = epoll_create1(0);
+
+	if ( _kq == -1 )
+    {
+        std::cerr << "epoll_create failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
 Cluster::~Cluster()
 {
-	std::cerr << "CLUSTER destructor called" << std::endl;
+	close(_kq);
 }
 
 static void	clean_config_string(std::string &config)
@@ -88,7 +95,7 @@ void	Cluster::config(std::string configFile)
 	}
 }
 
-void	Cluster::set_sockets(int &fd)
+void	Cluster::set_sockets()
 {
 	size_t	size = server_size();
 	struct sockaddr_in	address;
@@ -103,11 +110,9 @@ void	Cluster::set_sockets(int &fd)
 			struct epoll_event ev_set;
 			ev_set.events = EPOLLIN | EPOLLOUT;
 			ev_set.data.fd = new_socket.get_server_socket_fd();
-			if ( epoll_ctl(fd, EPOLL_CTL_ADD, new_socket.get_server_socket_fd(), &ev_set) )
-				std::cerr << "failed to add socket" << std::endl;
+			if ( epoll_ctl(_kq, EPOLL_CTL_ADD, new_socket.get_server_socket_fd(), &ev_set) )
+				std::cerr << "[WEBSERV]: failed to add socket" << std::endl;
 			_sockets.push_back(new_socket);
-			
-			std::cerr << "DEBUG i: " << i << " j: " << j << " fd: " << _sockets.back().get_server_socket_fd() << std::endl;
 		}
 	}
 }
@@ -119,42 +124,40 @@ std::string readFile(std::string filename)
    return buffer.str();
 }
 
-void	Cluster::accept_new_connection(int new_client_fd, int epoll_fd, Socket *socket)
+void	Cluster::accept_new_connection(int new_client_fd, Socket *socket)
 {
 	struct epoll_event ev_set;
 	socklen_t addr_len = sizeof(socket->get_server_address());
 
-	std::cerr << "client attempt to connect " << new_client_fd << std::endl;
+	std::cerr << "[WEBSERV]: attempt to connect client from [" << new_client_fd << "]" << std::endl;
 	int fd = accept(new_client_fd, (struct sockaddr *)socket->get_server_address(), &addr_len);
 	if ( fd == -1 )
-	{
-		std::cerr << "connection refused." << std::endl;
-		close(fd);
-	}
+		std::cerr << "[WEBSERV]: connection refused." << std::endl;
 	else
 	{
 		if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
-		{
-			throw std::runtime_error("fcntl function failed");
-		}
-		_clients_sockets.push_back(fd);
+			throw std::runtime_error("fcntl failed");
+
+		_clients[fd].socket = fd;
+		_clients[fd].server = socket->get_server();
+		_clients[fd].body_is_unfinished = false;
+		_clients[fd].left_to_read = 0;
+		_clients[fd].request_is_chunked = false;
+	
 		ev_set.events = EPOLLIN;
 		ev_set.data.fd = fd;
-		_clients[fd].socket = fd;
-		_clients[fd].events = ev_set;
-		_clients[fd].server = socket->get_server();
-		if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev_set) )
-			std::cerr << "failed to add client" << std::endl;
+		if ( epoll_ctl(_kq, EPOLL_CTL_ADD, fd, &ev_set) )
+			std::cerr << "[WEBSERV]: epoll_ctl failed to add client[" << new_client_fd << "]" << std::endl;
 		else
-			std::cerr << "succeed to add client : " << fd << std::endl;
+			std::cerr << "[WEBSERV]: succeed to add client[" << fd << "]" << std::endl;
 	}
 }
 
-Socket	*Cluster::is_a_listen_fd(int event_fd)
+Socket	*Cluster::is_a_listen_fd(int fd)
 {
 	for ( size_t j = 0 ; j < get_sockets().size() ; j++ )
 	{
-		if (event_fd == get_sockets()[j].get_server_socket_fd())
+		if ( fd == get_sockets()[j].get_server_socket_fd() )
 			return get_socket(j) ;
 	}
 	return NULL ;
@@ -162,27 +165,201 @@ Socket	*Cluster::is_a_listen_fd(int event_fd)
 
 void    Cluster::setup_and_run()
 {
-    int    epoll_fd = epoll_create1(0);
 
-    if ( epoll_fd == -1 )
-    {
-        std::cerr << "epoll_create failed" << std::endl;
-        exit(EXIT_FAILURE);
-    }
+    set_sockets();
 
-    set_sockets(epoll_fd);
-
-	run(epoll_fd);
+	run();
 }
 
-void	Cluster::run(int &epoll_fd)
+void	Cluster::close_connection(int client_socket)
+{
+	if (epoll_ctl(_kq, EPOLL_CTL_DEL, client_socket, NULL) == -1)
+			std::cerr << "[WEBSERV]: epoll_ctl failed to delete client [" << client_socket << "]" << std::endl;
+		else
+			std::cerr << "[WEBSERV]: client [" << client_socket << "] deleted successfully" << std::endl;
+		close(client_socket);
+		_clients.erase(client_socket);
+}
+
+
+int Cluster::read_body(client_info &client, ssize_t nbytes, char *buf)
+{
+	if ( client.left_to_read <= 0 && !client.request_is_chunked )
+		return 0;
+	if ( client.server->get_client_max_body_size() != 0 && client.server->get_client_max_body_size() < (client.body_request.size() + nbytes) )
+	{
+		client.max_body_size_reached = true;
+		client.left_to_read = 0;
+		return 0;
+	}
+
+	for ( ssize_t i = 0 ; i < nbytes ; i++ )
+		client.body_request.push_back(buf[i]);
+	
+	if ( client.left_to_read )
+	{
+		client.left_to_read -= nbytes;
+		// std::cerr << "\n\n[DEBUG]: left_to_read " << client.left_to_read << "\n\n" << std::endl;
+		return client.left_to_read > 0 ;
+	}
+	else if ( client.request_is_chunked )
+	{
+		bool	end_of_file_reached = ( client.body_request.find("\r\n0\r\n\r\n") != std::string::npos );
+		return end_of_file_reached ;
+	}
+	return 1 ;
+
+}
+
+void Cluster::parse_request(client_info &client)
+{
+	std::stringstream ss(client.request);
+	std::string	key_header, value_header;
+
+	ss >> client.method >> client.path >> client.version;
+
+	while ( getline(ss, key_header, ':') && getline(ss, value_header, '\r') )
+	{
+		value_header.erase(0, value_header.find_first_not_of(" \r\n\t"));
+		value_header.erase(value_header.find_last_not_of(" \r\n\t") + 1, value_header.length());
+		key_header.erase(0, key_header.find_first_not_of(" \r\n\t"));
+		client.header_request[key_header] = value_header;
+	}
+
+	if ( client.header_request.find("Content-Length") != client.header_request.end() )
+	{
+		std::stringstream ssbs(client.header_request["Content-Length"]);
+		ssbs >> client.body_size;
+	}
+	else
+		client.body_size = 0;
+	
+	if ( client.header_request.find("Transfer-Encoding") != client.header_request.end() )
+	{
+		client.request_is_chunked = ( client.header_request["Transfer-Encoding"].find("chunked") != std::string::npos );
+	}
+	client.left_to_read = client.body_size;
+}
+
+int	Cluster::read_request(client_info &client)
+{
+	char buf[120];
+	bzero(buf, 120);
+	ssize_t nbytes = read(client.socket, buf, 120);
+	if ( nbytes <= 0 )
+	{
+		close_connection(client.socket);
+		return 0;
+	}
+
+	// std::cerr << "[DEBUG]: client[" << client.socket << "] readed \n[" << buf << "]\n\n" << std::endl;
+
+	if ( client.body_is_unfinished )
+		return !read_body(client, nbytes, buf);
+
+	std::string	tmp = (client.request + (std::string)buf);
+	size_t pos_end_header = tmp.find("\r\n\r\n");
+
+
+	if ( pos_end_header == std::string::npos )
+	{
+		for ( ssize_t i = 0 ; i < nbytes ; i++ )
+			client.request.push_back(buf[i]);
+
+		return 0 ;
+	}
+	else
+	{
+		client.request += tmp.substr(client.request.size(), pos_end_header - client.request.size());
+
+		client.body_request = tmp.substr(pos_end_header + 4, tmp.size() - (pos_end_header + 4));
+		
+		parse_request(client);
+		client.left_to_read -= client.body_request.size();
+
+		client.body_is_unfinished = client.left_to_read > 0;
+		return !client.body_is_unfinished;
+	}
+}
+
+void	Cluster::put_back_chunked(client_info &client)
+{
+	std::string	line;
+	std::stringstream ss(client.body_request);
+
+	while ( getline(ss, line) )
+	{
+		int chunk_size = std::atoi(line.c_str());
+		if ( chunk_size == 0 )
+			break ;
+		std::string	chunk;
+		chunk.resize(chunk_size);
+		ss.read(&chunk[0], chunk_size);
+		std::cerr << "[DEBUG]: chunk= " << chunk << std::endl;
+	}
+
+}
+
+std::string	Cluster::create_response(client_info &client)
+{
+	std::string response;
+
+	if ( client.request_is_chunked )
+		put_back_chunked(client);
+	if ( client.method.empty() || client.path.empty() || client.version.empty() )
+		return error(400);
+	if ( client.max_body_size_reached )
+	{
+		return error(413);
+	}
+	else if ( client)
+	return response ;
+}
+
+void	Cluster::read_event(int client_socket)
+{
+	struct epoll_event ev_set;
+
+	if ( read_request(_clients[client_socket]) )
+	{
+		std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].request << "\nBody=\n[" << _clients[client_socket].body_request << "]" << std::endl;
+		
+		_clients[client_socket].response = create_response(_clients[client_socket]);
+		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].response << std::endl;
+		ev_set.data.fd = client_socket;
+		ev_set.events = EPOLLOUT;
+		if (epoll_ctl(_kq, EPOLL_CTL_MOD, client_socket, &ev_set) == -1)
+			perror("epoll_ctl");
+	}
+}
+
+void	Cluster::write_event(int client_socket)
+{
+	struct epoll_event ev_set;
+
+	if (_clients[client_socket].request != "")
+		std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].request << std::endl;
+
+	Request request(_clients[client_socket]);
+	request.handle_request(_clients[client_socket]);
+		
+	std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].header_request["Connection"]  << "]" << std::endl;
+	_clients[client_socket].request = "";
+	_clients[client_socket].body_request = "";
+
+		close_connection(client_socket);
+}
+
+void	Cluster::run()
 {
 	struct epoll_event ev_set;
     struct epoll_event event_list[1024];
 	struct sockaddr_in *addr;
+
     while (1)
     {
-        int    nb_of_events_to_handle = epoll_wait(epoll_fd, event_list, 1024, 30000);
+        int    nb_of_events_to_handle = epoll_wait(_kq, event_list, 1024, -1);
+		std::cerr << "[DEBUG]: epoll wait have " << nb_of_events_to_handle << " event to handle" << std::endl;
         if ( nb_of_events_to_handle == -1 )
         {
             std::cerr << "epoll_wait failed" << std::endl;
@@ -194,53 +371,13 @@ void	Cluster::run(int &epoll_fd)
             {
 				Socket *socket = is_a_listen_fd(event_list[i].data.fd);
 				if ( socket )
-					accept_new_connection(event_list[i].data.fd, epoll_fd, socket);
+					accept_new_connection(event_list[i].data.fd, socket);
 				else if ( _clients.find(event_list[i].data.fd) != _clients.end() )
 				{
 					if ( event_list[i].events & EPOLLIN )
-					{
-						read_event(event_list, );
-						_clients[event_list[i].data.fd].request = read_request(event_list[i].data.fd);
-						if (_clients[event_list[i].data.fd].request != "")
-							std::cerr << "[DEBUG] READ _clients[" <<event_list[i].data.fd<< "].request = " << _clients[event_list[i].data.fd].request << std::endl;
-						if (_clients[event_list[i].data.fd].request == "")
-						{
-							std::cerr << "READ DELETE " << event_list[i].data.fd << std::endl;
-							if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, NULL) == -1)
-								throw std::runtime_error("epoll_ctl: delete");
-							close(event_list[i].data.fd);
-							_clients.erase(event_list[i].data.fd);
-						}
-						else
-						{
-							ev_set.data.fd = event_list[i].data.fd;
-							ev_set.events = EPOLLOUT;
-							if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, event_list[i].data.fd, &ev_set) == -1)
-								perror("epoll_ctl");
-						}
-					}
+						read_event(event_list[i].data.fd);
 					else if ( event_list[i].events & EPOLLOUT )
-					{
-						if (_clients[event_list[i].data.fd].request != "")
-							std::cerr << "[DEBUG] WRITE _clients[" << event_list[i].data.fd << "].request = " << _clients[event_list[i].data.fd].request << std::endl;
-						Request request(event_list[i].data.fd, _clients[event_list[i].data.fd]);
-
-						request.handle_request(_clients[event_list[i].data.fd]);
-
-						_clients[event_list[i].data.fd].request == "";
-						ev_set.data.fd = event_list[i].data.fd;
-						if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, &ev_set) == -1)
-							perror("epoll_ctl");
-						close(event_list[i].data.fd);
-						// if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, NULL) == -1)
-						// 	throw std::runtime_error("epoll_ctl: delete");
-						// if (_clients[event_list[i].data.fd].request == "")
-						// {
-						// 	std::cerr << "WRITE DELETE " << event_list[i].data.fd << std::endl;
-						// 	close(event_list[i].data.fd);
-						// 	_clients.erase(event_list[i].data.fd);
-						// }
-					}
+						write_event(event_list[i].data.fd);
 				}
             }
         }

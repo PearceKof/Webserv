@@ -1,10 +1,13 @@
 
 #include "Request.hpp"
 
-Request::Request(int client_fd, client_info &client) : _request_a_file(false)
+Request::Request(client_info &client)
 {
 	if ( client.request == "" )
 		return ;
+
+	_request_a_file = false;
+
 	set_method(client.request);
 	set_path(client.request, client.server->get_locations());
 	set_header_and_body(client.request);
@@ -76,8 +79,8 @@ void	Request::set_header_and_body(std::string request)
 		{
 			std::string map_key = line.substr(0, colon_pos);
 			std::string	map_value = line.substr(colon_pos + 1);
-			map_value.erase(0, map_value.find_first_not_of(" \t"));
-			map_value.erase(map_value.find_last_not_of(" \t") + 1);
+			map_value.erase(0, map_value.find_first_not_of(" \r\n\t"));
+			map_value.erase(map_value.find_last_not_of(" \r\n\t") + 1);
 
 			_header[map_key] = map_value; 
 		}
@@ -122,6 +125,7 @@ void	Request::send_auto_index(client_info client)
 	response += "Date: " + daytime() + "\r\n";
 	response += "Server: " + client.server->get_server_name() + "\r\n";
 	response += "Content-Type: text/html\r\n";
+	response += "Connection: Close\r\n";
 	std::string body = "<html><head><title>Directory Listing</title></head><body><h1>Directory Listing</h1><table>";
 	body += "<tr><td><a href=\"../\">../</a></td><td>-</td></tr>";
 
@@ -169,7 +173,8 @@ void	Request::get_method(client_info client)
 	{
 		if ( location.get_auto_index() == true || client.server->get_auto_index() == true )
 			send_auto_index(client);
-		return;
+		std::cerr << "[DEBUG]: autoindex end" << std::endl;
+		return ;
 	}
 	if ( _path == "null" )
 		send_response(client, "404 not found", "text/html", client.server->get_root() + client.server->get_error_page(404));
@@ -257,6 +262,7 @@ void	Request::send_response(client_info client, std::string status_code, std::st
 {
 	std::string response = "http/1.1 " + status_code + "\r\n";
 	response += "Date: " + daytime() + "\r\n";
+	response += "Connection: keep-alive\r\n";
 	response += "Server: " + client.server->get_server_name() + "\r\n";
 	response += "Content-Type: " + content_type + "\r\n";
 

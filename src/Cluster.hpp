@@ -30,11 +30,13 @@ class Cluster
 		std::vector<Socket>			_sockets;
 		std::map<int, client_info>	_clients;
 		std::vector<int>			_clients_sockets;
+		int							_kq;
 
-		void	set_sockets(int &kq);
-		void	accept_new_connection(int new_client_fd, int kq, Socket *socket);
+		void	set_sockets();
+		void	accept_new_connection(int new_client_fd, Socket *socket);
 		Socket	*is_a_listen_fd(int event_fd);
-		void	delete_client(struct kevent ev_list, int kq);
+		void	delete_client(struct kevent ev_list);
+
 	public:
 		Cluster();
 		~Cluster();
@@ -43,7 +45,7 @@ class Cluster
 		void	print_all();
 		bool	is_valid_config();
 		void	setup_and_run();
-		void	run(int &kq);
+		void	run();
 	
 		size_t				server_size() { return _servers.size(); };
 		Socket				*get_socket(int index) { return &_sockets[index] ; };
