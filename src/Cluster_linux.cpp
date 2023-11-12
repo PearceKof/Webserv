@@ -138,11 +138,7 @@ void	Cluster::accept_new_connection(int new_client_fd, Socket *socket)
 		if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
 			throw std::runtime_error("fcntl failed");
 
-		_clients[fd].socket = fd;
-		_clients[fd].server = socket->get_server();
-		_clients[fd].body_is_unfinished = false;
-		_clients[fd].left_to_read = 0;
-		_clients[fd].request_is_chunked = false;
+		_clients[fd].set_fd_and_server(fd, socket->get_server());
 	
 		ev_set.events = EPOLLIN;
 		ev_set.data.fd = fd;
@@ -163,14 +159,6 @@ Socket	*Cluster::is_a_listen_fd(int fd)
 	return NULL ;
 }
 
-void    Cluster::setup_and_run()
-{
-
-    set_sockets();
-
-	run();
-}
-
 void	Cluster::close_connection(int client_socket)
 {
 	if (epoll_ctl(_kq, EPOLL_CTL_DEL, client_socket, NULL) == -1)
@@ -181,155 +169,36 @@ void	Cluster::close_connection(int client_socket)
 		_clients.erase(client_socket);
 }
 
-
-int Cluster::read_body(client_info &client, ssize_t nbytes, char *buf)
-{
-	if ( client.left_to_read <= 0 && !client.request_is_chunked )
-		return 0;
-	if ( client.server->get_client_max_body_size() != 0 && client.server->get_client_max_body_size() < (client.body_request.size() + nbytes) )
-	{
-		client.max_body_size_reached = true;
-		client.left_to_read = 0;
-		return 0;
-	}
-
-	for ( ssize_t i = 0 ; i < nbytes ; i++ )
-		client.body_request.push_back(buf[i]);
-	
-	if ( client.left_to_read )
-	{
-		client.left_to_read -= nbytes;
-		// std::cerr << "\n\n[DEBUG]: left_to_read " << client.left_to_read << "\n\n" << std::endl;
-		return client.left_to_read > 0 ;
-	}
-	else if ( client.request_is_chunked )
-	{
-		bool	end_of_file_reached = ( client.body_request.find("\r\n0\r\n\r\n") != std::string::npos );
-		return end_of_file_reached ;
-	}
-	return 1 ;
-
-}
-
-void Cluster::parse_request(client_info &client)
-{
-	std::stringstream ss(client.request);
-	std::string	key_header, value_header;
-
-	ss >> client.method >> client.path >> client.version;
-
-	while ( getline(ss, key_header, ':') && getline(ss, value_header, '\r') )
-	{
-		value_header.erase(0, value_header.find_first_not_of(" \r\n\t"));
-		value_header.erase(value_header.find_last_not_of(" \r\n\t") + 1, value_header.length());
-		key_header.erase(0, key_header.find_first_not_of(" \r\n\t"));
-		client.header_request[key_header] = value_header;
-	}
-
-	if ( client.header_request.find("Content-Length") != client.header_request.end() )
-	{
-		std::stringstream ssbs(client.header_request["Content-Length"]);
-		ssbs >> client.body_size;
-	}
-	else
-		client.body_size = 0;
-	
-	if ( client.header_request.find("Transfer-Encoding") != client.header_request.end() )
-	{
-		client.request_is_chunked = ( client.header_request["Transfer-Encoding"].find("chunked") != std::string::npos );
-	}
-	client.left_to_read = client.body_size;
-}
-
-int	Cluster::read_request(client_info &client)
+int	Cluster::read_request(int client_socket)
 {
 	char buf[120];
 	bzero(buf, 120);
-	ssize_t nbytes = read(client.socket, buf, 120);
+	ssize_t nbytes = read(client_socket, buf, 120);
 	if ( nbytes <= 0 )
 	{
-		close_connection(client.socket);
+		close_connection(client_socket);
 		return 0;
-	}
-
-	// std::cerr << "[DEBUG]: client[" << client.socket << "] readed \n[" << buf << "]\n\n" << std::endl;
-
-	if ( client.body_is_unfinished )
-		return !read_body(client, nbytes, buf);
-
-	std::string	tmp = (client.request + (std::string)buf);
-	size_t pos_end_header = tmp.find("\r\n\r\n");
-
-
-	if ( pos_end_header == std::string::npos )
-	{
-		for ( ssize_t i = 0 ; i < nbytes ; i++ )
-			client.request.push_back(buf[i]);
-
-		return 0 ;
 	}
 	else
 	{
-		client.request += tmp.substr(client.request.size(), pos_end_header - client.request.size());
-
-		client.body_request = tmp.substr(pos_end_header + 4, tmp.size() - (pos_end_header + 4));
-		
-		parse_request(client);
-		client.left_to_read -= client.body_request.size();
-
-		client.body_is_unfinished = client.left_to_read > 0;
-		return !client.body_is_unfinished;
+		return _clients[client_socket].treat_received_data(buf, nbytes) ;
 	}
-}
-
-void	Cluster::put_back_chunked(client_info &client)
-{
-	std::string	line;
-	std::stringstream ss(client.body_request);
-
-	while ( getline(ss, line) )
-	{
-		int chunk_size = std::atoi(line.c_str());
-		if ( chunk_size == 0 )
-			break ;
-		std::string	chunk;
-		chunk.resize(chunk_size);
-		ss.read(&chunk[0], chunk_size);
-		std::cerr << "[DEBUG]: chunk= " << chunk << std::endl;
-	}
-
-}
-
-std::string	Cluster::create_response(client_info &client)
-{
-	std::string response;
-
-	if ( client.request_is_chunked )
-		put_back_chunked(client);
-	if ( client.method.empty() || client.path.empty() || client.version.empty() )
-		return error(400);
-	if ( client.max_body_size_reached )
-	{
-		return error(413);
-	}
-	else if ( client)
-	return response ;
 }
 
 void	Cluster::read_event(int client_socket)
 {
 	struct epoll_event ev_set;
 
-	if ( read_request(_clients[client_socket]) )
+	if ( read_request(client_socket) )
 	{
-		std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].request << "\nBody=\n[" << _clients[client_socket].body_request << "]" << std::endl;
+		std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << "\nBody=\n[" << _clients[client_socket].get_body_request() << "]" << std::endl;
 		
-		_clients[client_socket].response = create_response(_clients[client_socket]);
-		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].response << std::endl;
+		_clients[client_socket].create_response();
+		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
 		ev_set.data.fd = client_socket;
 		ev_set.events = EPOLLOUT;
 		if (epoll_ctl(_kq, EPOLL_CTL_MOD, client_socket, &ev_set) == -1)
-			perror("epoll_ctl");
+			std::cerr << "[WEBSERV]: ctl mod failed" << std::endl;
 	}
 }
 
@@ -337,15 +206,15 @@ void	Cluster::write_event(int client_socket)
 {
 	struct epoll_event ev_set;
 
-	if (_clients[client_socket].request != "")
-		std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].request << std::endl;
+	if (_clients[client_socket].get_request() != "")
+		std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
 
-	Request request(_clients[client_socket]);
-	request.handle_request(_clients[client_socket]);
+	// Request request();
+	_clients[client_socket].handle_request();
 		
-	std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].header_request["Connection"]  << "]" << std::endl;
-	_clients[client_socket].request = "";
-	_clients[client_socket].body_request = "";
+	std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].get_header_request("Connection")  << "]" << std::endl;
+	_clients[client_socket].get_request() = "";
+	_clients[client_socket].get_body_request() = "";
 
 		close_connection(client_socket);
 }
@@ -356,10 +225,11 @@ void	Cluster::run()
     struct epoll_event event_list[1024];
 	struct sockaddr_in *addr;
 
+	set_sockets();
+
     while (1)
     {
         int    nb_of_events_to_handle = epoll_wait(_kq, event_list, 1024, -1);
-		std::cerr << "[DEBUG]: epoll wait have " << nb_of_events_to_handle << " event to handle" << std::endl;
         if ( nb_of_events_to_handle == -1 )
         {
             std::cerr << "epoll_wait failed" << std::endl;

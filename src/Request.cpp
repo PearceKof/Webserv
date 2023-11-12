@@ -1,31 +1,28 @@
 
 #include "Request.hpp"
 
-Request::Request(client_info &client)
+Request::Request()
 {
-	if ( client.request == "" )
-		return ;
-
+	_body_is_unfinished = false;
+	_left_to_read = 0;
+	_request_is_chunked = false;
 	_request_a_file = false;
 
-	set_method(client.request);
-	set_path(client.request, client.server->get_locations());
-	set_header_and_body(client.request);
+	_socket = 0;
+	_body_size = 0;
+	_left_to_read = 0;
+	_left_to_send = 0;
+
+	_request_a_file = false;
+	_request_is_chunked = false;
+	_body_is_unfinished = false;
+	_max_body_size_reached = false;
 }
 
-
-Request::~Request()
+void	Request::set_fd_and_server(int fd, Server *server)
 {
-}
-
-void	Request::set_method(std::string request)
-{
-	if ( request.find("GET") != std::string::npos )
-		_method = "GET";
-	else if ( request.find("POST") != std::string::npos )
-		_method = "POST";
-	else if ( request.find("DELETE") != std::string::npos )
-		_method = "DELETE";
+	_socket = fd;
+	_server = server;
 }
 
 static	bool	is_valid_path(std::map<std::string, Location> locations, std::string path)
@@ -37,63 +34,177 @@ static	bool	is_valid_path(std::map<std::string, Location> locations, std::string
 	return false ;
 }
 
-void	Request::set_path(std::string request, std::map<std::string, Location> locations)
+void	Request::set_path(std::map<std::string, Location> locations)
 {
-	size_t begin = request.find("/");
+	size_t begin = _request.find("/");
 	size_t end;
 	std::string extension = "default";
 
 	if ( begin != std::string::npos )
 	{
-		end = request.find(' ', begin);
-		_path = request.substr(begin, end - begin);
+		end = _request.find(' ', begin);
+		_path = _request.substr(begin, end - begin);
 	}
 	if ( !is_directory(_path) && !is_valid_path(locations, _path) )
-		_path = "null";
-	if ( _mime.is_a_file(request) )
+		_path = "";
+	if ( _mime.is_a_file(_request) )
 	{
 		_request_a_file = true;
-		begin = request.find('/');
-		end = request.find(' ', begin);
-		_path = request.substr(begin, end - begin);
-		begin = request.find('.');
-		end = request.find(' ', begin);
-		extension = request.substr(begin, end - begin);
+		begin = _request.find('/');
+		end = _request.find(' ', begin);
+		_path = _request.substr(begin, end - begin);
+		begin = _request.find('.');
+		end = _request.find(' ', begin);
+		extension = _request.substr(begin, end - begin);
 	}
-
 	_content_type = _mime.get_content_type(extension);
 }
 
-void	Request::set_header_and_body(std::string request)
+Request::~Request()
 {
-	std::stringstream	ss(request);
-	std::string	line;
-
-	while ( std::getline(ss, line) )
-	{
-		if ( line == "\r")
-			break ;
-
-		size_t colon_pos = line.find(':');
-		if ( colon_pos != std::string::npos )
-		{
-			std::string map_key = line.substr(0, colon_pos);
-			std::string	map_value = line.substr(colon_pos + 1);
-			map_value.erase(0, map_value.find_first_not_of(" \r\n\t"));
-			map_value.erase(map_value.find_last_not_of(" \r\n\t") + 1);
-
-			_header[map_key] = map_value; 
-		}
-	}
-	size_t	boundary_pos = request.find("boundary=") + 9;
-	_header["boundary"] = request.substr(boundary_pos, request.find("\r\n", boundary_pos));
-	_body = request.substr(request.find("\r\n", boundary_pos) + 2, std::string::npos);
 }
 
-void	Request::handle_request(client_info client)
+int Request::read_body( ssize_t nbytes, char *buf)
+{
+	if ( _left_to_read <= 0 && !_request_is_chunked )
+		return 0;
+	if ( _server->get_client_max_body_size() != 0 && _server->get_client_max_body_size() < (_body_request.size() + nbytes) )
+	{
+		_max_body_size_reached = true;
+		_left_to_read = 0;
+		return 0;
+	}
+
+	for ( ssize_t i = 0 ; i < nbytes ; i++ )
+		_body_request.push_back(buf[i]);
+	
+	if ( _left_to_read )
+	{
+		_left_to_read -= nbytes;
+		// std::cerr << "\n\n[DEBUG]: left_to_read " << _left_to_read << "\n\n" << std::endl;
+		return _left_to_read > 0 ;
+	}
+	else if ( _request_is_chunked )
+	{
+		bool	end_of_file_reached = ( _body_request.find("\r\n0\r\n\r\n") != std::string::npos );
+		return end_of_file_reached ;
+	}
+	return 1 ;
+
+}
+
+void Request::parse_request()
+{
+	std::stringstream ss(_request);
+	std::string	key_header, value_header;
+
+	ss >> _method >> _path >> _version;
+
+	while ( getline(ss, key_header, ':') && getline(ss, value_header, '\r') )
+	{
+		value_header.erase(0, value_header.find_first_not_of(" \r\n\t"));
+		value_header.erase(value_header.find_last_not_of(" \r\n\t") + 1, value_header.length());
+		key_header.erase(0, key_header.find_first_not_of(" \r\n\t"));
+		_header_request[key_header] = value_header;
+	}
+
+	if ( _header_request.find("Content-Length") != _header_request.end() )
+	{
+		std::stringstream ssbs(_header_request["Content-Length"]);
+		ssbs >> _body_size;
+	}
+	else
+		_body_size = 0;
+	
+	if ( _header_request.find("Transfer-Encoding") != _header_request.end() )
+	{
+		_request_is_chunked = ( _header_request["Transfer-Encoding"].find("chunked") != std::string::npos );
+	}
+
+	size_t	boundary_pos = _request.find("boundary=") + 9;
+	if ( _request.find("boundary=") != std::string::npos + 9 )
+	{
+		_header_request["boundary"] = _request.substr(boundary_pos, _request.find("\r\n", boundary_pos));
+	}
+	_left_to_read = _body_size;
+}
+
+int	Request::treat_received_data(char *buf, ssize_t nbytes)
+{
+	// std::cerr << "[DEBUG]: client[" << _socket << "] readed \n[" << buf << "]\n\n" << std::endl;
+
+	if ( _body_is_unfinished )
+		return !read_body(nbytes, buf);
+
+	std::string	tmp = (_request + (std::string)buf);
+	size_t pos_end_header = tmp.find("\r\n\r\n");
+
+	if ( pos_end_header == std::string::npos )
+	{
+		for ( ssize_t i = 0 ; i < nbytes ; i++ )
+			_request.push_back(buf[i]);
+
+		return 0 ;
+	}
+	else
+	{
+		_request += tmp.substr(_request.size(), pos_end_header - _request.size());
+
+		_body_request = tmp.substr(pos_end_header + 4, tmp.size() - (pos_end_header + 4));
+		
+		parse_request();
+		_left_to_read -= _body_request.size();
+
+		_body_is_unfinished = _left_to_read > 0;
+		return !_body_is_unfinished;
+	}
+}
+
+void	Request::put_back_chunked()
+{
+	std::string	line;
+	std::stringstream ss(_body_request);
+
+	while ( getline(ss, line) )
+	{
+		int chunk_size = std::atoi(line.c_str());
+		if ( chunk_size == 0 )
+			break ;
+		std::string	chunk;
+		chunk.resize(chunk_size);
+		ss.read(&chunk[0], chunk_size);
+		std::cerr << "[DEBUG]: chunk= " << chunk << std::endl;
+	}
+
+}
+
+std::string	Request::create_response()
+{
+	std::string response;
+
+	set_path(_server->get_locations());
+
+	if ( _request_is_chunked )
+		put_back_chunked();
+	if ( _method.empty() || _path.empty() || _version.empty() )
+	{
+		std::cerr << "[DEBUG]: error 400 here" << std::endl;
+		// return error(400);
+	}
+	if ( _max_body_size_reached )
+	{
+		std::cerr << "[DEBUG]: error 413 here" << std::endl;
+		// return error(413);
+	}
+
+	_left_to_send = response.size();
+	return response ;
+}
+
+void	Request::handle_request()
 {
 	if (_method == "GET")
-		get_method(client);
+		handle_GET();
 	// else if (_method == "DELETE")
 	// 	delete_method(client);
 	// else if (_method == "POST")
@@ -111,7 +222,7 @@ void	redirection(int client_sock, std::string redirection)
 	send(client_sock, response.c_str(), response.size(), 0);
 }
 
-void	Request::send_auto_index(client_info client)
+void	Request::send_auto_index()
 {
 	_path = "." + _path;
 	DIR *dir = opendir(_path.c_str());
@@ -123,7 +234,7 @@ void	Request::send_auto_index(client_info client)
 
 	std::string response = "http/1.1 200 OK\r\n";
 	response += "Date: " + daytime() + "\r\n";
-	response += "Server: " + client.server->get_server_name() + "\r\n";
+	response += "Server: " + _server->get_server_name() + "\r\n";
 	response += "Content-Type: text/html\r\n";
 	response += "Connection: Close\r\n";
 	std::string body = "<html><head><title>Directory Listing</title></head><body><h1>Directory Listing</h1><table>";
@@ -159,56 +270,59 @@ void	Request::send_auto_index(client_info client)
 	response += body;
 	size_t nbyte = response.size();
 	while ( nbyte > 0 )
-		nbyte -= send(client.socket, response.c_str(), response.size(), 0);
+		nbyte -= send(_socket, response.c_str(), response.size(), 0);
 }
 
-void error(client_info client, int status_code)
+void error(int status_code)
 {}
 
-void	Request::get_method(client_info client)
+void	Request::handle_GET()
 {
-	Location location = client.server->get_locations()[_path];
+	Location location = _server->get_locations()[_path];
 	// std::cerr << "is " << _path << " a directory: " << is_directory(_path) << std::endl;
 	if ( is_directory(_path) )
 	{
-		if ( location.get_auto_index() == true || client.server->get_auto_index() == true )
-			send_auto_index(client);
+		if ( location.get_auto_index() == true || _server->get_auto_index() == true )
+			send_auto_index();
 		std::cerr << "[DEBUG]: autoindex end" << std::endl;
 		return ;
 	}
-	if ( _path == "null" )
-		send_response(client, "404 not found", "text/html", client.server->get_root() + client.server->get_error_page(404));
+	if ( _path == "" )
+	{
+		//error(404);
+		send_response("404 not found", "text/html", _server->get_root() + _server->get_error_page(404));
+	}
 	else if ( _request_a_file == true )
-		send_response(client, "200 OK", _content_type, _path);
+		send_response("200 OK", _content_type, _path);
 	else if ( _method == "GET" )
 	{
 
 		if ( location.get_redirect() != "" )
 		{
-			redirection(client.socket, location.get_redirect());
+			redirection(_socket, location.get_redirect());
 			return ;
 		}
 
 		std::string	content = location.get_root();
 		if ( content == "" )
-			content = client.server->get_root();
+			content = _server->get_root();
 		
-		if ( location.get_allow_methods(GET) == false && client.server->get_allow_methods(GET) == false )
+		if ( location.get_allow_methods(GET) == false && _server->get_allow_methods(GET) == false )
 		{
 			if ( location.get_error_page(405) != "" )
 				content += location.get_error_page(405);
 			else
-				content += client.server->get_error_page(405);
-			send_response(client, "405 Method Not Allowed", "text/html", content);
+				content += _server->get_error_page(405);
+			send_response("405 Method Not Allowed", "text/html", content);
 		}
 		else
 		{
 			if ( location.get_index() != "" )
 				content += location.get_index();
 			else
-				content += client.server->get_index();
+				content += _server->get_index();
 
-			send_response(client, "200 OK", "text/html", content);
+			send_response("200 OK", "text/html", content);
 		} 
 
 	}
@@ -220,14 +334,14 @@ void loadFile(const std::string &fileName, std::stringstream &stream) {
 	input_file.close();
 }
 
-void	Request::send_image(client_info client, std::string image, std::string response)
+void	Request::send_image(std::string image, std::string response)
 {
 	std::cerr << "send_image" << std::endl;
 	FILE	*img_file = fopen(image.c_str(), "rb");
 	if ( img_file == NULL )
 	{
 		_request_a_file = false;
-		send_response(client, "404 not found", _content_type, "");
+		send_response("404 not found", _content_type, "");
 		return ;
 	}
 	fseek(img_file, 0L, SEEK_END);
@@ -250,7 +364,7 @@ void	Request::send_image(client_info client, std::string image, std::string resp
 
 		ssize_t ret = response.size();
 		while (ret > 0)
-			ret -= send(client.socket, response.c_str(), response.size(), 0);
+			ret -= send(_socket, response.c_str(), response.size(), 0);
 		stream.close();
 		delete[] buffer;
 		std::cerr << "send_image debug b " << std::to_string(size) << " response: " <<  response << std::endl;
@@ -258,19 +372,19 @@ void	Request::send_image(client_info client, std::string image, std::string resp
 	}
 }
 
-void	Request::send_response(client_info client, std::string status_code, std::string content_type, std::string file)
+void	Request::send_response(std::string status_code, std::string content_type, std::string file)
 {
 	std::string response = "http/1.1 " + status_code + "\r\n";
 	response += "Date: " + daytime() + "\r\n";
 	response += "Connection: keep-alive\r\n";
-	response += "Server: " + client.server->get_server_name() + "\r\n";
+	response += "Server: " + _server->get_server_name() + "\r\n";
 	response += "Content-Type: " + content_type + "\r\n";
 
 	std::cerr << "DEBUG" << std::endl;
 	std::string content;
 	if ( _request_a_file == true )
 	{
-		send_image(client, ASSETS_DIR + file, response);
+		send_image(ASSETS_DIR + file, response);
 		return ;
 	}
 	else if ( file != "" )
@@ -288,7 +402,7 @@ void	Request::send_response(client_info client, std::string status_code, std::st
 	std::cerr << "[DEBUG] response sended:\n" << response << std::endl;
 	size_t nbyte = response.size();
 	while ( nbyte > 0 )
-		nbyte -= send(client.socket, response.c_str(), response.size(), 0);
+		nbyte -= send(_socket, response.c_str(), response.size(), 0);
 
 
 }

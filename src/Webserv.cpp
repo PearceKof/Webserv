@@ -17,7 +17,7 @@ int	main(int ac, char **av)
 		cluster.print_all();
 		if ( cluster.is_valid_config() == false )
 			return EXIT_FAILURE ;
-		cluster.setup_and_run();
+		cluster.run();
 	}
 	catch (std::exception &e)
 	{

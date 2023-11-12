@@ -3,6 +3,7 @@
 # define WEBSERV_HPP
 
 # define ASSETS_DIR "assets"
+# define DEFAULT_CONFIG_PATH "./config/config_files/default.conf"
 
 # include "Cluster_linux.hpp"
 // # include "Cluster.hpp"
@@ -27,7 +28,6 @@
 bool	is_directory(std::string path);
 std::string	trim_config(const char *to_find, std::string& server_config);
 std::string	daytime();
-# define DEFAULT_CONFIG_PATH "./config/config_files/default.conf"
 
 enum methods
 {
