@@ -193,6 +193,7 @@ int	Cluster::read_request(int client_socket)
 	}
 	else
 	{
+		// std::cerr << "------------DEBUG-------------" << std::endl;
 		return _clients[client_socket].treat_received_data(buf, nbytes) ;
 	}
 }
@@ -210,7 +211,7 @@ void	Cluster::read_event(int client_socket)
 		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
 
 		// ev_set = _clients[client_socket].events;
-		EV_SET(&ev_set, client_socket, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, 0);
+		EV_SET(&ev_set, client_socket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 		if ( kevent(_kq, &ev_set, 1, 0, 0, 0 ) )
 			std::cerr << "kevent failed" << std::endl;
 	}
@@ -218,17 +219,20 @@ void	Cluster::read_event(int client_socket)
 
 void	Cluster::write_event(int client_socket)
 {
-	if (_clients[client_socket].get_request() != "")
-		std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
+	// if (_clients[client_socket].get_request() != "")
+	// 	std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
 
-	_clients[client_socket].handle_request();
-		
-	std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].get_header_request("Connection")  << "]" << std::endl;
+	// _clients[client_socket].handle_request();
+	// std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
 
-	_clients[client_socket].get_request() = "";
-	_clients[client_socket].get_body_request() = "";
+	if ( _clients[client_socket].send_response() )
+	{
+		std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].get_header_request("Connection")  << "]" << std::endl;
+		_clients[client_socket].get_request() = "";
+		_clients[client_socket].get_body_request() = "";
 
-	close_connection(client_socket);
+		close_connection(client_socket);
+	}
 }
 
 void	Cluster::run()

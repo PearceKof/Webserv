@@ -205,19 +205,24 @@ void	Cluster::read_event(int client_socket)
 
 void	Cluster::write_event(int client_socket)
 {
-	struct epoll_event ev_set;
+	// struct epoll_event ev_set;
 
 	if (_clients[client_socket].get_request() != "")
 		std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
+	
+	std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
 
 	// Request request();
-	_clients[client_socket].handle_request();
-		
-	std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].get_header_request("Connection")  << "]" << std::endl;
-	_clients[client_socket].get_request() = "";
-	_clients[client_socket].get_body_request() = "";
+	// _clients[client_socket].handle_request();
+	if ( _clients[client_socket].send_response() )
+	{
+		_clients[client_socket].get_request() = "";
+		_clients[client_socket].get_body_request() = "";
 
-	close_connection(client_socket);
+		std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].get_header_request("Connection")  << "]" << std::endl;
+		close_connection(client_socket);
+	}
+
 }
 
 void	Cluster::run()
