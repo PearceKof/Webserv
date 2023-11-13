@@ -16,6 +16,7 @@ Request::Request()
 	_request_is_chunked = false;
 	_body_is_unfinished = false;
 	_max_body_size_reached = false;
+	_content_lenght = "0";
 }
 
 void	Request::set_fd_and_server(int fd, Server *server)
@@ -187,17 +188,17 @@ void	Request::create_response()
 	if ( _method.empty() || _path.empty() || _version.empty() )
 	{
 		std::cerr << "[DEBUG]: error 400 (invalid request)" << std::endl;
-		// return error(400);
+		_body_response = error(400);
 	}
 	if ( _max_body_size_reached )
 	{
 		std::cerr << "[DEBUG]: error 413 (body size max reached)" << std::endl;
-		// return error(413);
+		_body_response = error(413);
 	}
 	if ( _version != "HTTP/1.1")
 	{
 		std::cerr << "[DEBUG]: error 505 (unsuported version)" << std::endl;
-		// return error(413);
+		_body_response = error(505);
 	}
 
 	if ( _method == "GET" )
@@ -218,11 +219,15 @@ void	Request::create_response()
 void	Request::generate_full_response()
 {
 	_response = "HTTP/1.1 " + _status_code + "\r\n";
-	_response += _header_response + "\r\n";
+	_response += _header_response;
+	if ( _content_lenght != "0")
+		_response += "Content-Lenght: " + _content_lenght + "\r\n";
+	_response += "\r\n";
+
 	_response += _body_response;
 
 	_left_to_send = _response.size();
-	std::cerr << "[DEBUG]: response generated:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
+	std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
 }
 
 void	Request::handle_request()
@@ -245,19 +250,19 @@ void	Request::redirection(std::string redirection)
 
 void	Request::send_auto_index()
 {
-	_path = "." + _path;
-	DIR *dir = opendir(_path.c_str());
-	if ( dir == NULL )
-	{
-		std::cerr << "error 403" << std::endl;
-		_body_request = error(403);
-		return ;
-	}
-
 	_status_code = "200 OK";
 	_header_response += "Date: " + daytime() + "\r\n";
 	_header_response += "Server: " + _server->get_server_name() + "\r\n";
 	_header_response += "Content-Type: text/html\r\n";
+	_path = "." + _path;
+	DIR *dir = opendir(_path.c_str());
+	if ( dir == NULL )
+	{
+
+		_body_response = error(403);
+		return ;
+	}
+
 	_body_response = "<html><head><title>Directory Listing</title></head><body><h1>Directory Listing</h1><table>";
 	_body_response += "<tr><td><a href=\"../\">../</a></td><td>-</td></tr>";
 
@@ -287,25 +292,33 @@ void	Request::send_auto_index()
 	}
 	_body_response += "</table></body></html>";
 	closedir(dir);
-	_header_response += "Content-lenght: " + std::to_string(_body_response.size()) + "\r\n";
+	_content_lenght = std::to_string(_body_response.size());
 }
 
 void	Request::handle_GET()
 {
+	_status_code = "200 OK";
 	Location location = _server->get_locations()[_path];
 	// std::cerr << "is " << _path << " a directory: " << is_directory(_path) << std::endl;
 	if ( is_directory(_path) )
 	{
+		std::cerr << "\n" << _path << " IS A DIRECTORY\n" << std::endl;
 		if ( location.get_auto_index() == true || _server->get_auto_index() == true )
 			send_auto_index();
+		else if ( location.get_index() == "" )
+			_body_response = error(404);
 	}
 	else if ( _path == "" )
 	{
+		std::cerr << "\nPATH IS EMPTY\n" << std::endl;
 		_body_response = error(404);
 		// make_response("404 not found", "text/html", _server->get_root() + _server->get_error_page(404));
 	}
-	else if ( _request_a_file == true )
+	else if ( _path != "/" && is_existing_file(_path) )
+	{
+		std::cerr << "\n" << _path <<" IS A FILE\n" << std::endl;
 		make_response("200 OK", _path);
+	}
 	else if ( _method == "GET" )
 	{
 
@@ -351,12 +364,12 @@ std::string	Request::get_image(std::string image)
 	if ( img_file == NULL )
 	{
 		_request_a_file = false;
-		// _response("404 not found", "");
-		// return error(404);
+		return error(404);
 	}
 	fseek(img_file, 0L, SEEK_END);
 	size_t	size = ftell(img_file);
-	_header_response += "Content-Lenght: " + std::to_string(size) + "\r\n";
+	_content_lenght = std::to_string(size);
+	// _header_response += "Content-Lenght: " + std::to_string(size) + "\r\n";
 	fclose(img_file);
 
 	std::ifstream stream;
@@ -393,6 +406,7 @@ std::string	Request::error(int status_code)
 	if ( content == "")
 		content = "<h1>" + std::to_string(status_code) + "</h1>";
 
+	_status_code = std::to_string(status_code);
 	return content ;
 }
 
@@ -414,7 +428,6 @@ void	Request::make_response(std::string status_code, std::string file)
 		std::stringstream stream;
 		stream << content_stream.rdbuf();
 		content = stream.str();
-		std::cerr << "[DEBUG]: if ( file != "" ) is true\n" << "content =\n[" << content << "]" << std::endl;
 	}
 	else
 		content = error(404);

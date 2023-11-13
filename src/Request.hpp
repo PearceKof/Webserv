@@ -31,6 +31,7 @@ class Request
 		std::string							_body_response;
 		std::string							_status_code;
 		std::string							_content_type;
+		std::string							_content_lenght;
 
 		Mime								_mime;
 		Server*								_server;

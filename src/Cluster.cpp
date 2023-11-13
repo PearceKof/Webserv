@@ -169,18 +169,6 @@ void	Cluster::close_connection(int client_socket)
 	_clients.erase(client_socket);
 }
 
-// void	Cluster::delete_client(struct kevent ev_list)
-// {
-// 	struct kevent ev_set;
-// 	std::cerr << "[WEBSERV]: delete client [" << ev_list.ident << "]" << std::endl;
-// 	// ev_set = _clients[ev_list.ident].events;
-// 	EV_SET(&ev_set, ev_list.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-// 	if ( kevent(_kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-// 		std::cerr << "kevent failed to delete" << std::endl;
-// 	_clients.erase(ev_list.ident);
-// 	close(ev_list.ident);
-// }
-
 int	Cluster::read_request(int client_socket)
 {
 	char buf[120];

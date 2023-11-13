@@ -26,6 +26,7 @@
 ------utils.cpp------
 */
 bool	is_directory(std::string path);
+bool	is_existing_file( std::string path );
 std::string	trim_config(const char *to_find, std::string& server_config);
 std::string	daytime();
 
