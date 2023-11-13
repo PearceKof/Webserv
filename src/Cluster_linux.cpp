@@ -194,6 +194,7 @@ void	Cluster::read_event(int client_socket)
 		std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << "\nBody=\n[" << _clients[client_socket].get_body_request() << "]" << std::endl;
 		
 		_clients[client_socket].create_response();
+	
 		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
 		ev_set.data.fd = client_socket;
 		ev_set.events = EPOLLOUT;
@@ -216,14 +217,13 @@ void	Cluster::write_event(int client_socket)
 	_clients[client_socket].get_request() = "";
 	_clients[client_socket].get_body_request() = "";
 
-		close_connection(client_socket);
+	close_connection(client_socket);
 }
 
 void	Cluster::run()
 {
 	struct epoll_event ev_set;
     struct epoll_event event_list[1024];
-	struct sockaddr_in *addr;
 
 	set_sockets();
 

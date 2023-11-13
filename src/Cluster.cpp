@@ -4,10 +4,17 @@
 
 Cluster::Cluster()
 {
+	_kq = kqueue();
+	if ( _kq == -1 )
+    {
+        std::cerr << "epoll_create failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
 Cluster::~Cluster()
 {
+	close(_kq);
 }
 
 
@@ -115,19 +122,6 @@ std::string readFile(std::string filename)
    return buffer.str();
 }
 
-void    Cluster::setup_and_run()
-{
-    if ( _kq == -1 )
-    {
-        std::cerr << "kqueue failed" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    set_sockets();
-
-	run();
-}
-
 void	Cluster::accept_new_connection(int new_client_fd, Socket *socket)
 {
 	struct kevent ev_set;
@@ -142,9 +136,7 @@ void	Cluster::accept_new_connection(int new_client_fd, Socket *socket)
 		if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
 			throw std::runtime_error("fcntl function failed");
 
-		_clients[fd].socket = fd;
-		_clients[fd].server = socket->get_server();
-		_clients[fd].events = ev_set;
+		_clients[fd].set_fd_and_server(fd, socket->get_server());
 
 		ev_set.ident = fd;
 		EV_SET(&ev_set, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
@@ -165,24 +157,89 @@ Socket	*Cluster::is_a_listen_fd(int event_fd)
 	return NULL ;
 }
 
-void	Cluster::delete_client(struct kevent ev_list)
+void	Cluster::close_connection(int client_socket)
 {
 	struct kevent ev_set;
-	std::cerr << "[WEBSERV]: delete client [" << ev_list.ident << "]" << std::endl;
-	ev_set = _clients[ev_list.ident].events;
-	EV_SET(&ev_set, ev_list.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	EV_SET(&ev_set, client_socket, EVFILT_READ, EV_DELETE, 0, 0, NULL);
 	if ( kevent(_kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-		std::cerr << "kevent failed to delete" << std::endl;
-	_clients.erase(ev_list.ident);
-	close(ev_list.ident);
+		std::cerr << "[WEBSERV]: failed to delete client [" << client_socket << "]" << std::endl;
+	else
+		std::cerr << "[WEBSERV]: client [" << client_socket << "] deleted successfully" << std::endl;
+	close(client_socket);
+	_clients.erase(client_socket);
+}
+
+// void	Cluster::delete_client(struct kevent ev_list)
+// {
+// 	struct kevent ev_set;
+// 	std::cerr << "[WEBSERV]: delete client [" << ev_list.ident << "]" << std::endl;
+// 	// ev_set = _clients[ev_list.ident].events;
+// 	EV_SET(&ev_set, ev_list.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+// 	if ( kevent(_kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+// 		std::cerr << "kevent failed to delete" << std::endl;
+// 	_clients.erase(ev_list.ident);
+// 	close(ev_list.ident);
+// }
+
+int	Cluster::read_request(int client_socket)
+{
+	char buf[120];
+	bzero(buf, 120);
+	ssize_t nbytes = read(client_socket, buf, 120);
+	if ( nbytes <= 0 )
+	{
+		close_connection(client_socket);
+		return 0;
+	}
+	else
+	{
+		return _clients[client_socket].treat_received_data(buf, nbytes) ;
+	}
+}
+
+void	Cluster::read_event(int client_socket)
+{
+	struct kevent ev_set;
+
+	if ( read_request(client_socket) )
+	{
+		std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << "\nBody=\n[" << _clients[client_socket].get_body_request() << "]" << std::endl;
+		
+		_clients[client_socket].create_response();
+
+		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
+
+		// ev_set = _clients[client_socket].events;
+		EV_SET(&ev_set, client_socket, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, 0);
+		if ( kevent(_kq, &ev_set, 1, 0, 0, 0 ) )
+			std::cerr << "kevent failed" << std::endl;
+	}
+}
+
+void	Cluster::write_event(int client_socket)
+{
+	if (_clients[client_socket].get_request() != "")
+		std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
+
+	_clients[client_socket].handle_request();
+		
+	std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].get_header_request("Connection")  << "]" << std::endl;
+
+	_clients[client_socket].get_request() = "";
+	_clients[client_socket].get_body_request() = "";
+
+	close_connection(client_socket);
 }
 
 void	Cluster::run()
 {
+	struct kevent ev_set;
+	struct kevent ev_list[1024];
+
+	set_sockets();
+
 	while (1)
     {
-		struct kevent ev_set;
-        struct kevent ev_list[1024];
         int    num_events = kevent(_kq, NULL, 0, ev_list, 1024, NULL);
         if ( num_events == -1 )
         {
@@ -200,35 +257,10 @@ void	Cluster::run()
 				else if ( _clients.find(ev_list[i].ident) != _clients.end() )
 				{
 					if (ev_list[i].filter == EVFILT_READ)
-					{
-						_clients[ev_list[i].ident].request = read_request(ev_list[i].ident);
-
-						if (_clients[ev_list[i].ident].request != "")
-							std::cerr << "[DEBUG] READ _clients[" <<ev_list[i].ident<< "].request = " << _clients[ev_list[i].ident].request << std::endl;
-
-						if (_clients[ev_list[i].ident].request == "")
-							delete_client(ev_list[i]);
-						else
-						{
-							ev_set = _clients[ev_list[i].ident].events;
-							EV_SET(&ev_set, ev_list[i].ident, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, 0);
-							if ( kevent(_kq, &ev_set, 1, 0, 0, 0 ) )
-								std::cerr << "kevent failed" << std::endl;
-						}
-					}
+						read_event(ev_list[i].ident);
 					else if (ev_list[i].filter == EVFILT_WRITE)
-					{
-						if (_clients[ev_list[i].ident].request != "")
-							std::cerr << "[DEBUG] WRITE _clients[" << ev_list[i].ident << "].request = " << _clients[ev_list[i].ident].request << std::endl;
-
-						Request request(_clients[ev_list[i].ident]);
-
-						request.handle_request(_clients[ev_list[i].ident]);
-						_clients[ev_list[i].ident].request = "";
-						close(ev_list[i].ident);
-					}
+						write_event(ev_list[i].ident);
 				}
-
             }
         }
     }
