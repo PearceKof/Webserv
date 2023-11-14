@@ -65,6 +65,7 @@ class Request
 		void		load_file();
 
 		void		handle_GET();
+		void		handle_POST();
 		void		error(int status_code);
 
 		std::string&	get_request() { return _request ; };

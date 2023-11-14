@@ -14,18 +14,17 @@ Location::~Location() {}
 
 void	Location::set_attributs(std::string& location_config)
 {
-	_server_name = trim_config("server_name", location_config);
-	_root = trim_config("root", location_config);
-	if ( location_config.find("autoindex") == std::string::npos )
-		_index = trim_config("index", location_config);
-	_redirect = trim_config("redirect", location_config);
-	_upload_path = trim_config("upload_path", location_config);
-	_cgi_path = trim_config("cgi_path", location_config);
-	_client_max_body_size = trim_config("client_max_body_size", location_config);
+	_server_name = trim_config("\"server_name\"", location_config);
+	_root = trim_config("\"root\"", location_config);
+	_index = trim_config("\"index\"", location_config);
+	_redirect = trim_config("\"redirect\"", location_config);
+	_upload_path = trim_config("\"upload_path\"", location_config);
+	_cgi_path = trim_config("\"cgi_path\"", location_config);
+	_client_max_body_size = trim_config("\"client_max_body_size\"", location_config);
 
-	if ( !(trim_config("autoindex", location_config).compare("on")) )
+	if ( !(trim_config("\"autoindex\"", location_config).compare("on")) )
 		_auto_index = true;
-	if ( !(trim_config("autoindex", location_config).compare("on")) )
+	if ( !(trim_config("\"autoindex\"", location_config).compare("on")) )
 		_upload = true;
 }
 
@@ -37,7 +36,7 @@ void	Location::set_error_pages(std::string location_config)
 	size_t		end;
 	int			error_index;
 
-	begin = location_config.find("error_page");
+	begin = location_config.find("\"error_page\"");
 	while ( begin != std::string::npos )
 	{
 		end = location_config.find('\n');
@@ -53,7 +52,7 @@ void	Location::set_error_pages(std::string location_config)
 			std::istringstream(error_path) >> error_index;
 			_error_pages[error_index] = tmp.substr(begin, end - begin);
 		}
-		begin = location_config.find("error_page");
+		begin = location_config.find("\"error_page\"");
 	}
 }
 
@@ -63,7 +62,7 @@ void	Location::set_allow_methods(std::string location_config)
 	size_t		end;
 	std::string	methods;
 
-	begin = location_config.find("allow_methods") + 14;
+	begin = location_config.find("\"allow_methods\"") + 16;
 	if ( begin != std::string::npos + 14 )
 	{
 		end = location_config.find("\n");

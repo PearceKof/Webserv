@@ -210,8 +210,8 @@ void	Request::create_response()
 	{
 		if ( _method == "GET" )
 			handle_GET();
-		// else if ( _method == "POST")
-		// 	handle_POST();
+		else if ( _method == "POST")
+			handle_POST();
 		// else if ( _method == "DELETE" )
 		// 	handle_DELETE();
 		// else if ( !_method.empty())
@@ -347,6 +347,11 @@ void	Request::handle_GET()
 	}
 	else
 		return error(404);
+}
+
+void	Request::handle_POST()
+{
+	_status_code = "200";
 }
 
 void	Request::error(int status_code)

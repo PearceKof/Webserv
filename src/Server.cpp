@@ -23,7 +23,7 @@ void	Server::set_error_pages(std::string server_config)
 	std::string	tmp;
 	int	error_index;
 
-	begin = server_config.find("error_page");
+	begin = server_config.find("\"error_page\"");
 	while ( begin != std::string::npos )
 	{
 		end = server_config.find('\n', begin);
@@ -40,7 +40,7 @@ void	Server::set_error_pages(std::string server_config)
 			_error_pages[error_index] = tmp.substr(begin, end - begin);
 			// std::cerr << "DEBUG 1 begin = " << begin << " end = " << end << "\n _error_pages= [" << _error_pages[error_index] << "]" << std::endl;
 		}
-		begin = begin = server_config.find("error_page");
+		begin = begin = server_config.find("\"error_page\"");
 	}
 }
 
@@ -51,7 +51,7 @@ void	Server::set_locations(std::string& server_config)
 	std::string	path;
 	std::string	tmp;
 
-	begin  = server_config.find("location");
+	begin  = server_config.find("\"location\"");
 	while ( begin != std::string::npos )
 	{
 		end = server_config.find('}');
@@ -64,7 +64,7 @@ void	Server::set_locations(std::string& server_config)
 		end = tmp.find('}');
 		Location location(tmp.substr(begin, end - begin));
 		_locations[path] = location;
-		begin = server_config.find("location");
+		begin = server_config.find("\"location\"");
 	}
 }
 
@@ -97,20 +97,20 @@ static int	set_client_max_body_size(std::string size_str)
 void	Server::set_attributs(std::string& server_config)
 {
 
-	_server_name = trim_config("server_name", server_config);
-	_root = trim_config("root", server_config);
-	_index = trim_config("index", server_config);
-	_redirect = trim_config("redirect", server_config);
-	_upload_path = trim_config("upload_path", server_config);
-	_cgi_path = trim_config("cgi_path", server_config);
+	_server_name = trim_config("\"server_name\"", server_config);
+	_root = trim_config("\"root\"", server_config);
+	_index = trim_config("\"index\"", server_config);
+	_redirect = trim_config("\"redirect\"", server_config);
+	_upload_path = trim_config("\"upload_path\"", server_config);
+	_cgi_path = trim_config("\"cgi_path\"", server_config);
 
-	_client_max_body_size =  set_client_max_body_size(trim_config("client_max_body_size", server_config));
+	_client_max_body_size =  set_client_max_body_size(trim_config("\"client_max_body_size\"", server_config));
 	if ( _client_max_body_size == 0 )
 		std::cerr << "Wrong body size." << std::endl;
 	
-	if ( !(trim_config("autoindex", server_config).compare("on")) )
+	if ( !(trim_config("\"autoindex\"", server_config).compare("on")) )
 		_auto_index = true;
-	if ( !(trim_config("autoindex", server_config).compare("on")) )
+	if ( !(trim_config("\"autoindex\"", server_config).compare("on")) )
 		_upload = true;
 	
 }
@@ -121,7 +121,7 @@ void	Server::set_allow_methods(std::string location_config)
 	size_t		end;
 	std::string	methods;
 
-	begin = location_config.find("allow_methods") + 14;
+	begin = location_config.find("\"allow_methods\"") + 16;
 	if ( begin != std::string::npos + 14 )
 	{
 		end = location_config.find("\n");
@@ -180,7 +180,7 @@ void	Server::set_listen(std::string location_config)
 	std::string	str_port;
 	int			port;
 
-	begin = location_config.find("listen") + 7;
+	begin = location_config.find("\"listen\"") + 9;
 	end = location_config.find('\n', begin);
 	tmp = location_config.substr(begin, end - begin);
 	while ( tmp.find(':') != std::string::npos )
