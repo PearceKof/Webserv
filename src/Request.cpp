@@ -36,17 +36,9 @@ static	bool	is_valid_path(std::map<std::string, Location> locations, std::string
 
 void	Request::set_path(std::map<std::string, Location> locations)
 {
-	size_t begin = _request.find("/");
+	size_t begin;
 	size_t end;
 	std::string extension = "default";
-
-	if ( begin != std::string::npos )
-	{
-		end = _request.find(' ', begin);
-		_path = _request.substr(begin, end - begin);
-	}
-	if ( !is_directory(_path) && !is_valid_path(locations, _path) )
-		_path = "";
 	if ( _mime.is_a_file(_request) )
 	{
 		_request_a_file = true;
@@ -58,6 +50,36 @@ void	Request::set_path(std::map<std::string, Location> locations)
 		extension = _request.substr(begin, end - begin);
 	}
 	_content_type = _mime.get_content_type(extension);
+
+	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
+	{
+			std::cerr << "[DEBUG]: 1 path= " << _path << std::endl; 
+		if ( it->first == _path )
+		{
+			std::string root = locations[it->first].get_root();
+			if ( root == "" )
+				root = _server->get_root();
+
+			if (locations[it->first].get_index() != "")
+				_path = root + locations[it->first].get_index();
+
+			std::cerr << "[DEBUG]: 2 path= " << _path << std::endl; 
+			return ;
+		}
+	}
+	// _path = ASSETS_DIR + _path;
+	std::cerr << "[DEBUG]: 3 path= " << _path << std::endl; 
+	// size_t begin = _request.find("/");
+	// size_t end;
+	// std::string extension = "default";
+
+	// if ( begin != std::string::npos )
+	// {
+	// 	end = _request.find(' ', begin);
+	// 	_path = _request.substr(begin, end - begin);
+	// }
+	// if ( !is_directory(_path) && !is_valid_path(locations, _path) )
+	// 	_path = "";
 }
 
 Request::~Request()
@@ -185,60 +207,56 @@ void	Request::create_response()
 
 	if ( _request_is_chunked )
 		put_back_chunked();
+
 	if ( _method.empty() || _path.empty() || _version.empty() )
 	{
 		std::cerr << "[DEBUG]: error 400 (invalid request)" << std::endl;
-		_body_response = error(400);
+		error(400);
 	}
-	if ( _max_body_size_reached )
+	else if ( _max_body_size_reached )
 	{
 		std::cerr << "[DEBUG]: error 413 (body size max reached)" << std::endl;
-		_body_response = error(413);
+		error(413);
 	}
-	if ( _version != "HTTP/1.1")
+	else if ( _version != "HTTP/1.1")
 	{
 		std::cerr << "[DEBUG]: error 505 (unsuported version)" << std::endl;
-		_body_response = error(505);
+		error(505);
 	}
-
-	if ( _method == "GET" )
-		handle_GET();
-	// else if ( _method == "POST")
-	// 	handle_POST();
-	// else if ( _method == "DELETE" )
-	// 	handle_DELETE();
-	// else if ( !_method.empty())
-	// {
-	// 	std::cerr << "[DEBUG]: error 501 (Not Implemented)" << std::endl;
-	// 	// error(501);
-	// }
+	else
+	{
+		if ( _method == "GET" )
+			handle_GET();
+		// else if ( _method == "POST")
+		// 	handle_POST();
+		// else if ( _method == "DELETE" )
+		// 	handle_DELETE();
+		// else if ( !_method.empty())
+		// {
+		// 	std::cerr << "[DEBUG]: error 501 (Not Implemented)" << std::endl;
+		// 	// error(501);
+		// }
+	}
 
 	generate_full_response();
 }
 
 void	Request::generate_full_response()
 {
+	_header_response += "Date: " + daytime() + "\r\n";
+	_header_response += "Server: " + _server->get_server_name() + "\r\n";
+	if ( _content_type != "")
+		_header_response += "Content-Type: " + _content_type + "\r\n";
+	_header_response += "Content-Length: " + std::to_string(_body_response.size()) + "\r\n";
+
 	_response = "HTTP/1.1 " + _status_code + "\r\n";
 	_response += _header_response;
-	if ( _content_lenght != "0")
-		_response += "Content-Lenght: " + _content_lenght + "\r\n";
 	_response += "\r\n";
 
 	_response += _body_response;
 
 	_left_to_send = _response.size();
 	std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
-}
-
-void	Request::handle_request()
-{
-	if (_method == "GET")
-		handle_GET();
-	// else if (_method == "DELETE")
-	// 	delete_method(client);
-	// else if (_method == "POST")
-	// 	post_method(client);
-
 }
 
 void	Request::redirection(std::string redirection)
@@ -258,8 +276,7 @@ void	Request::send_auto_index()
 	DIR *dir = opendir(_path.c_str());
 	if ( dir == NULL )
 	{
-
-		_body_response = error(403);
+		error(403);
 		return ;
 	}
 
@@ -295,147 +312,121 @@ void	Request::send_auto_index()
 	_content_lenght = std::to_string(_body_response.size());
 }
 
+void	Request::load_file()
+{
+	std::ifstream ifs(_path.c_str());
+	std::stringstream ss;
+
+	ss << ifs.rdbuf();
+	ifs.close();
+	_body_response = ss.str();
+}
+
 void	Request::handle_GET()
 {
 	_status_code = "200 OK";
 	Location location = _server->get_locations()[_path];
+	std::cerr << "\n\n[DEBUG]: HERE enter get " << _path << std::endl;
 	// std::cerr << "is " << _path << " a directory: " << is_directory(_path) << std::endl;
 	if ( is_directory(_path) )
 	{
 		std::cerr << "\n" << _path << " IS A DIRECTORY\n" << std::endl;
-		if ( location.get_auto_index() == true || _server->get_auto_index() == true )
+
+		if ( location.get_auto_index() == true )
 			send_auto_index();
-		else if ( location.get_index() == "" )
-			_body_response = error(404);
-	}
-	else if ( _path == "" )
-	{
-		std::cerr << "\nPATH IS EMPTY\n" << std::endl;
-		_body_response = error(404);
-		// make_response("404 not found", "text/html", _server->get_root() + _server->get_error_page(404));
-	}
-	else if ( _path != "/" && is_existing_file(_path) )
-	{
-		std::cerr << "\n" << _path <<" IS A FILE\n" << std::endl;
-		make_response("200 OK", _path);
-	}
-	else if ( _method == "GET" )
-	{
-
-		if ( location.get_redirect() != "" )
-		{
-			redirection(location.get_redirect());
-			return ;
-		}
-
-		std::string	content = location.get_root();
-		if ( content == "" )
-			content = _server->get_root();
-		
-		if ( location.get_allow_methods(GET) == false && _server->get_allow_methods(GET) == false )
-		{
-			if ( location.get_error_page(405) != "" )
-				content += location.get_error_page(405);
-			else
-				content += _server->get_error_page(405);
-		}
 		else
 		{
-			if ( location.get_index() != "" )
-				content += location.get_index();
+			if ( location.get_index() == "" )
+				return error(404);
+			
+			_path += "/" + location.get_index();
+			if ( is_existing_file( _path ) )
+				load_file();
 			else
-				content += _server->get_index();
-
-			make_response("200 OK", content);
-		} 
+				return error(404);
+		}
 	}
-}
-
-void loadFile(const std::string &fileName, std::stringstream &stream) {
-	std::ifstream input_file(fileName.c_str());
-	stream << input_file.rdbuf();
-	input_file.close();
-}
-
-std::string	Request::get_image(std::string image)
-{
-	std::string content;
-	FILE	*img_file = fopen(image.c_str(), "rb");
-	if ( img_file == NULL )
+	else if ( is_existing_file(  _path ) )
 	{
-		_request_a_file = false;
+		std::cerr << "\n" << _path << " IS A FILE\n" << std::endl;
+		load_file();
+	}
+	else if ( is_existing_file( ASSETS_DIR + _path ) )
+	{
+		std::cerr << "\n" << _path << " IS AN ASSETS\n" << std::endl;
+		_path = ASSETS_DIR + _path;
+		load_file();
+	}
+	else if ( is_existing_file( "." + _path ) )
+	{
+		std::cerr << "\n" << _path << " IS A path to existing file\n" << std::endl;
+		_path = "." + _path;
+		load_file();
+	}
+	else
 		return error(404);
-	}
-	fseek(img_file, 0L, SEEK_END);
-	size_t	size = ftell(img_file);
-	_content_lenght = std::to_string(size);
-	// _header_response += "Content-Lenght: " + std::to_string(size) + "\r\n";
-	fclose(img_file);
-
-	std::ifstream stream;
-	stream.open(image, std::ifstream::binary);
-	if ( stream.is_open() )
-	{
-		char *buffer = new char[size];
-		bzero(buffer, size);
-		stream.read(buffer, size);
-
-		for (size_t i = 0; i < size ; i++)
-			content.push_back(buffer[i]);
-
-		stream.close();
-		delete[] buffer;
-		buffer = nullptr;
-	}
-	return content ;
 }
 
-std::string	Request::error(int status_code)
+// std::string	Request::get_image(std::string image)
+// {
+// 	std::string content;
+// 	FILE	*img_file = fopen(image.c_str(), "rb");
+// 	if ( img_file == NULL )
+// 	{
+// 		_request_a_file = false;
+// 		return error(404);
+// 	}
+// 	fseek(img_file, 0L, SEEK_END);
+// 	size_t	size = ftell(img_file);
+// 	_content_lenght = std::to_string(size);
+// 	// _header_response += "Content-Lenght: " + std::to_string(size) + "\r\n";
+// 	fclose(img_file);
+
+// 	std::ifstream stream;
+// 	stream.open(image, std::ifstream::binary);
+// 	if ( stream.is_open() )
+// 	{
+// 		char *buffer = new char[size];
+// 		bzero(buffer, size);
+// 		stream.read(buffer, size);
+
+// 		for (size_t i = 0; i < size ; i++)
+// 			content.push_back(buffer[i]);
+
+// 		stream.close();
+// 		delete[] buffer;
+// 		buffer = nullptr;
+// 	}
+// 	return content ;
+// }
+
+void	Request::error(int status_code)
 {
 	std::string	file;
-	std::string	content;
 
-	file = _server->get_error_page(status_code);
+	file = _server->get_root() + _server->get_error_page(status_code);
 
 	std::ifstream	content_stream(file.c_str());
 	std::stringstream stream;
 
 	stream << content_stream.rdbuf();
-	content = stream.str();
+	_body_response = stream.str();
 
-	if ( content == "")
-		content = "<h1>" + std::to_string(status_code) + "</h1>";
+	if ( _body_response == "")
+		_body_response = "<h1>ERROR: " + std::to_string(status_code) + "</h1>";
 
 	_status_code = std::to_string(status_code);
-	return content ;
-}
-
-void	Request::make_response(std::string status_code, std::string file)
-{
-	_status_code = status_code;
-	_header_response += "Date: " + daytime() + "\r\n";
-	_header_response += "Server: " + _server->get_server_name() + "\r\n";
-	_header_response += "Content-Type: " + _content_type + "\r\n";
-
-	std::string content;
-	if ( _request_a_file == true )
-	{
-		content = get_image(ASSETS_DIR + file);
-	}
-	else if ( file != "" )
-	{
-		std::ifstream content_stream(file.c_str());
-		std::stringstream stream;
-		stream << content_stream.rdbuf();
-		content = stream.str();
-	}
-	else
-		content = error(404);
-		
-	_header_response += "Content-Length: " + std::to_string(content.size()) + "\r\n";
-	_body_response = content;
 
 }
+
+// void	Request::make_response()
+// {
+// 	_header_response += "Date: " + daytime() + "\r\n";
+// 	_header_response += "Server: " + _server->get_server_name() + "\r\n";
+// 	if ( _content_type != "")
+// 		_header_response += "Content-Type: " + _content_type + "\r\n";
+// 	_header_response += "Content-Length: " + std::to_string(_body_response.size()) + "\r\n";
+// }
 
 bool	Request::send_response()
 {

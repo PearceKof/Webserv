@@ -207,10 +207,10 @@ void	Cluster::write_event(int client_socket)
 {
 	// struct epoll_event ev_set;
 
-	if (_clients[client_socket].get_request() != "")
-		std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
+	// if (_clients[client_socket].get_request() != "")
+	// 	std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
 	
-	std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
+	// std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
 
 	// Request request();
 	// _clients[client_socket].handle_request();

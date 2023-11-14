@@ -47,9 +47,9 @@ class Request
 		bool								_max_body_size_reached;
 
 		void		set_path(std::map<std::string, Location> locations);
-		void		make_response( std::string status_code, std::string file);
+		// void		make_response( std::string status_code, std::string file);
 		void		generate_full_response();
-		std::string	get_image(std::string image);
+		// std::string	get_image(std::string image);
 		void		send_auto_index();
 		void		redirection(std::string redirection);
 	public:
@@ -62,10 +62,10 @@ class Request
 		void		create_response();
 		void		put_back_chunked();
 		bool		send_response();
+		void		load_file();
 
-		void		handle_request();
 		void		handle_GET();
-		std::string	error(int status_code);
+		void		error(int status_code);
 
 		std::string&	get_request() { return _request ; };
 		std::string&	get_response() { return _response ; };

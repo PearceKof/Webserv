@@ -180,10 +180,7 @@ int	Cluster::read_request(int client_socket)
 		return 0;
 	}
 	else
-	{
-		// std::cerr << "------------DEBUG-------------" << std::endl;
 		return _clients[client_socket].treat_received_data(buf, nbytes) ;
-	}
 }
 
 void	Cluster::read_event(int client_socket)

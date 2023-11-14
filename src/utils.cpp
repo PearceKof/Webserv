@@ -5,9 +5,6 @@ bool	is_directory( std::string path )
 {
 	struct stat st;
 
-	if ( path == "/")
-		return false ;
-
 	path = "." + path;
 	if ( stat(path.c_str(), &st) )
 		return false ;
@@ -18,7 +15,12 @@ bool	is_directory( std::string path )
 bool	is_existing_file( std::string path )
 {
 	std::ifstream ifs(path.c_str());
-	return ifs.is_open() ;
+	bool is_open = ifs.is_open();
+
+	if ( is_open )
+		ifs.close();
+
+	return is_open ;
 }
 
 std::string	trim_config(const char *to_find, std::string& server_config)

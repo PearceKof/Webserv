@@ -16,7 +16,8 @@ void	Location::set_attributs(std::string& location_config)
 {
 	_server_name = trim_config("server_name", location_config);
 	_root = trim_config("root", location_config);
-	_index = trim_config("index", location_config);
+	if ( location_config.find("autoindex") == std::string::npos )
+		_index = trim_config("index", location_config);
 	_redirect = trim_config("redirect", location_config);
 	_upload_path = trim_config("upload_path", location_config);
 	_cgi_path = trim_config("cgi_path", location_config);
