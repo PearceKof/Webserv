@@ -53,7 +53,6 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
 	{
-			std::cerr << "[DEBUG]: 1 path= " << _path << std::endl; 
 		if ( it->first == _path )
 		{
 			std::string root = locations[it->first].get_root();
@@ -63,23 +62,10 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			if (locations[it->first].get_index() != "")
 				_path = root + locations[it->first].get_index();
 
-			std::cerr << "[DEBUG]: 2 path= " << _path << std::endl; 
 			return ;
 		}
 	}
-	// _path = ASSETS_DIR + _path;
-	std::cerr << "[DEBUG]: 3 path= " << _path << std::endl; 
-	// size_t begin = _request.find("/");
-	// size_t end;
-	// std::string extension = "default";
 
-	// if ( begin != std::string::npos )
-	// {
-	// 	end = _request.find(' ', begin);
-	// 	_path = _request.substr(begin, end - begin);
-	// }
-	// if ( !is_directory(_path) && !is_valid_path(locations, _path) )
-	// 	_path = "";
 }
 
 Request::~Request()
@@ -103,7 +89,6 @@ int Request::read_body( ssize_t nbytes, char *buf)
 	if ( _left_to_read )
 	{
 		_left_to_read -= nbytes;
-		// std::cerr << "\n\n[DEBUG]: left_to_read " << _left_to_read << "\n\n" << std::endl;
 		return _left_to_read > 0 ;
 	}
 	else if ( _request_is_chunked )
@@ -153,8 +138,6 @@ void Request::parse_request()
 
 int	Request::treat_received_data(char *buf, ssize_t nbytes)
 {
-	// std::cerr << "[DEBUG]: client[" << _socket << "] readed \n[" << buf << "]\n\n" << std::endl;
-
 	if ( _body_is_unfinished )
 		return !read_body(nbytes, buf);
 
@@ -326,8 +309,7 @@ void	Request::handle_GET()
 {
 	_status_code = "200 OK";
 	Location location = _server->get_locations()[_path];
-	std::cerr << "\n\n[DEBUG]: HERE enter get " << _path << std::endl;
-	// std::cerr << "is " << _path << " a directory: " << is_directory(_path) << std::endl;
+
 	if ( is_directory(_path) )
 	{
 		std::cerr << "\n" << _path << " IS A DIRECTORY\n" << std::endl;
@@ -367,39 +349,6 @@ void	Request::handle_GET()
 		return error(404);
 }
 
-// std::string	Request::get_image(std::string image)
-// {
-// 	std::string content;
-// 	FILE	*img_file = fopen(image.c_str(), "rb");
-// 	if ( img_file == NULL )
-// 	{
-// 		_request_a_file = false;
-// 		return error(404);
-// 	}
-// 	fseek(img_file, 0L, SEEK_END);
-// 	size_t	size = ftell(img_file);
-// 	_content_lenght = std::to_string(size);
-// 	// _header_response += "Content-Lenght: " + std::to_string(size) + "\r\n";
-// 	fclose(img_file);
-
-// 	std::ifstream stream;
-// 	stream.open(image, std::ifstream::binary);
-// 	if ( stream.is_open() )
-// 	{
-// 		char *buffer = new char[size];
-// 		bzero(buffer, size);
-// 		stream.read(buffer, size);
-
-// 		for (size_t i = 0; i < size ; i++)
-// 			content.push_back(buffer[i]);
-
-// 		stream.close();
-// 		delete[] buffer;
-// 		buffer = nullptr;
-// 	}
-// 	return content ;
-// }
-
 void	Request::error(int status_code)
 {
 	std::string	file;
@@ -418,15 +367,6 @@ void	Request::error(int status_code)
 	_status_code = std::to_string(status_code);
 
 }
-
-// void	Request::make_response()
-// {
-// 	_header_response += "Date: " + daytime() + "\r\n";
-// 	_header_response += "Server: " + _server->get_server_name() + "\r\n";
-// 	if ( _content_type != "")
-// 		_header_response += "Content-Type: " + _content_type + "\r\n";
-// 	_header_response += "Content-Length: " + std::to_string(_body_response.size()) + "\r\n";
-// }
 
 bool	Request::send_response()
 {
