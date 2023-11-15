@@ -271,12 +271,12 @@ void	Cluster::print_all()
 		std::cout << "upload_path : [" << _servers[i].get_upload_path() << "]" << std::endl;
 		std::cout << "cgi_path    : [" << _servers[i].get_cgi_path() << "]" << std::endl;
 	
-		std::cout << "cgi ext     : [";
+		std::cout << "cgi_ext     : [";
 		for ( size_t j = 0 ; j < _servers[i].get_cgi_extension_size() ; j++ )
 		{
 			std::cout << _servers[i].get_cgi_extension(j);
 			if ( j != _servers[i].get_cgi_extension_size() - 1 )
-				std::cout << " ";
+				std::cout << "|";
 		}
 		std::cout << "]" << std::endl;
 	

@@ -17,6 +17,7 @@ Request::Request()
 	_body_is_unfinished = false;
 	_max_body_size_reached = false;
 	_content_lenght = "0";
+	_active_location = NULL;
 }
 
 void	Request::set_fd_and_server(int fd, Server *server)
@@ -205,6 +206,10 @@ void	Request::create_response()
 	{
 		std::cerr << "[DEBUG]: error 505 (unsuported version)" << std::endl;
 		error(505);
+	}
+	else if ( _active_location != NULL && _active_location->get_cgi_path() != "" )
+	{
+		// on gére les cgi ici
 	}
 	else
 	{

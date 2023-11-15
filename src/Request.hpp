@@ -32,6 +32,7 @@ class Request
 		std::string							_status_code;
 		std::string							_content_type;
 		std::string							_content_lenght;
+		Location							*_active_location;
 
 		Mime								_mime;
 		Server*								_server;

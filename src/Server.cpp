@@ -214,7 +214,7 @@ void	Server::set_cgi_extension(std::string server_config)
 	size_t		end;
 	std::string	tmp;
 
-	begin = server_config.find("cgi_extension") + 14;
+	begin = server_config.find("\"cgi_extension\"") + 16;
 	if ( begin == std::string::npos + 14 )
 		return ;
 	end = server_config.find('\n', begin);
