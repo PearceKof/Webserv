@@ -54,7 +54,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
 	{
-		if ( (_path.find(it->first) == 0 && it->first != "/") || (_path == "/" && it->first == "/") )
+		if ( _path == it->first || (_path == "/" && it->first == "/") )
 		{
 			std::string root = locations[it->first].get_root();
 
