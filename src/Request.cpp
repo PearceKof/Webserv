@@ -17,7 +17,7 @@ Request::Request()
 	_body_is_unfinished = false;
 	_max_body_size_reached = false;
 	_content_lenght = "0";
-	_active_location = NULL;
+
 }
 
 void	Request::set_fd_and_server(int fd, Server *server)
@@ -54,15 +54,22 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
 	{
-		if ( it->first == _path )
+		if ( (_path.find(it->first) == 0 && it->first != "/") || (_path == "/" && it->first == "/") )
 		{
 			std::string root = locations[it->first].get_root();
+
+
 			if ( root == "" )
 				root = _server->get_root();
 
 			if (locations[it->first].get_index() != "")
 				_path = root + locations[it->first].get_index();
 
+			return ;
+		}
+		if (locations[it->first].get_cgi_path() != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos)
+		{
+			_cgi_path = locations[it->first].get_cgi_path();
 			return ;
 		}
 	}
@@ -207,8 +214,9 @@ void	Request::create_response()
 		std::cerr << "[DEBUG]: error 505 (unsuported version)" << std::endl;
 		error(505);
 	}
-	else if ( _active_location != NULL && _active_location->get_cgi_path() != "" )
+	else if ( _cgi_path != "")
 	{
+		std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]" << std::endl;
 		// on gére les cgi ici
 	}
 	else
@@ -354,9 +362,48 @@ void	Request::handle_GET()
 		return error(404);
 }
 
+std::string	get_filename(std::string body)
+{
+	size_t start_filename = body.find("filename=\"");
+	if (start_filename == std::string::npos)
+		return "" ;
+	size_t end_filename = body.find('\"', start_filename + 10);
+	if (end_filename == std::string::npos)
+		return "" ;
+
+	return body.substr(start_filename + 10, end_filename - (start_filename + 10)) ;
+}
+
+void	Request::upload_file(std::string boundary)
+{
+	std::cerr << "[DEBUG]: handle_POST found boundary :[" << boundary << "]" << std::endl;
+	std::string filename = get_filename(_body_request);
+	std::cerr << "[DEBUG]: handle_POST filename =[" << filename << "]" << std::endl;
+	if ( filename.empty() )
+		return error(400);
+	size_t	begin = _body_request.find("\r\n\r\n");
+	size_t	end = _body_request.find("\r\n--" + boundary + "--", begin);
+	if ( begin == std::string::npos || end == std::string::npos)
+		return error(400);
+	std::string	body_trimmed = _body_request.substr(begin + 4, end - (begin + 4));
+	std::cerr << "[DEBUG]: handle_POST body_trimmed =[" << body_trimmed << "]" << std::endl;
+
+	std::string path;
+	// if ( _active_location->get_root() != "" )
+	// 	path = _active_location->get_root() + + "/" + filename;
+	// else if ( _server->get_root() != "" )
+	// 	path = _server->get_root() + + "/" + filename;
+}
+
 void	Request::handle_POST()
 {
-	_status_code = "200";
+	_status_code = "200 OK";
+	std::cerr << "[DEBUG]: ENTER handle_POST content-type= " << _header_request["Content-Type"] << std::endl;
+	size_t pos_boundary = _header_request["Content-Type"].find("boundary=");
+	if (pos_boundary != std::string::npos)
+	{
+		upload_file(_header_request["Content-Type"].substr(pos_boundary + 9));
+	}
 }
 
 void	Request::error(int status_code)

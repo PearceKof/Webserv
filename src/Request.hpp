@@ -32,10 +32,10 @@ class Request
 		std::string							_status_code;
 		std::string							_content_type;
 		std::string							_content_lenght;
-		Location							*_active_location;
 
 		Mime								_mime;
 		Server*								_server;
+		std::string							_cgi_path;
 	
 		int									_socket;
 		int									_body_size;
@@ -67,6 +67,7 @@ class Request
 
 		void		handle_GET();
 		void		handle_POST();
+		void		upload_file(std::string boundary);
 		void		error(int status_code);
 
 		std::string&	get_request() { return _request ; };
