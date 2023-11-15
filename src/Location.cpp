@@ -8,7 +8,6 @@ Location::Location(std::string location_config) : _auto_index(false), _upload(fa
 	set_attributs(location_config);
 	set_error_pages(location_config);
 	set_allow_methods(location_config);
-	set_cgi_extension(location_config);
 }
 
 Location::~Location() {}
@@ -77,26 +76,4 @@ void	Location::set_allow_methods(std::string location_config)
 		_allow_methods[POST] = true;
 	if ( methods.find("DELETE") != std::string::npos )
 		_allow_methods[DELETE] = true;
-}
-
-void	Location::set_cgi_extension(std::string location_config)
-{
-	size_t		begin;
-	size_t		end;
-	std::string	tmp;
-
-	begin = location_config.find("\"cgi_extension\"") + 16;
-	if ( begin == std::string::npos + 16 )
-		return ;
-	end = location_config.find('\n', begin);
-	tmp = location_config.substr(begin, end - begin);
-	begin = 0;
-	end = tmp.find(' ', begin);
-	while ( end != std::string::npos )
-	{
-		_cgi_extension.push_back(tmp.substr(begin, end - begin));
-		begin = end + 1;
-		end = tmp.find(' ', begin);
-	}
-	_cgi_extension.push_back(tmp.substr(begin, end - begin));
 }

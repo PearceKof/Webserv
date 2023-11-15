@@ -15,7 +15,6 @@ class Server
 		std::map<std::string, Location>				_locations;
 		std::map<int, std::string>					_error_pages;
 		std::vector<std::pair<std::string, int> >	_listening_port;
-		std::vector<std::string>		_cgi_extension;
 		std::string	_root;
 		std::string	_server_name;
 		std::string	_index;
@@ -31,7 +30,6 @@ class Server
 		void	set_attributs(std::string& server_config);
 		void	set_error_pages(std::string server_config);
 		void	set_allow_methods(std::string server_config);
-		void	set_cgi_extension(std::string server_config);
 		void	set_listen(std::string location_config);
 		Server();
 
@@ -41,8 +39,6 @@ class Server
 
 		std::map<std::string, Location>	get_locations() { return _locations ; };
 		std::vector<std::pair<std::string, int> >	get_listening_port() { return _listening_port ; };
-		std::string	get_cgi_extension(int index) { return _cgi_extension[index] ; };
-		size_t		get_cgi_extension_size() { return _cgi_extension.size(); };
 		std::string	get_root() { return _root ; };
 		std::string	get_server_name() { return _server_name ; };
 		std::string	get_index() { return _index ; };

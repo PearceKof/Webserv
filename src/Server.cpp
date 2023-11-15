@@ -8,7 +8,7 @@ Server::Server(std::string server_config) : _auto_index(false), _upload(false), 
 	set_attributs(server_config);
 	set_allow_methods(server_config);
 	set_listen(server_config);
-	set_cgi_extension(server_config);
+	// set_cgi_extension(server_config);
 }
 
 Server::~Server()
@@ -70,28 +70,26 @@ void	Server::set_locations(std::string& server_config)
 
 static int	set_client_max_body_size(std::string size_str)
 {
-	size_t	multi = 1;
-	int		value;
-
 	if ( size_str.find_first_not_of("0123456789") != std::string::npos &&
 		size_str.find_first_not_of("0123456789") != size_str.size() - 1 )
 		return 0 ;
-	else if ( size_str[size_str.size() - 1] != 'M' && size_str[size_str.size() - 1] != 'K' )
-		return 0 ;
-	else if ( size_str[size_str.size() - 1] == 'K' )
-	{
-		size_str.erase(size_str.size() - 1, std::string::npos);
-		multi = 1000;
-	}
-	else if ( size_str[size_str.size() - 1] == 'M' )
-	{
-		size_str.erase(size_str.size() - 1, std::string::npos);
-		multi = 1000000;
-	}
-	if (size_str.size() > 4)
-		return 0 ;
+	// else if ( size_str[size_str.size() - 1] != 'M' && size_str[size_str.size() - 1] != 'K' )
+	// 	return 0 ;
+	// else if ( size_str[size_str.size() - 1] == 'K' )
+	// {
+	// 	size_str.erase(size_str.size() - 1, std::string::npos);
+	// 	multi = 1000;
+	// }
+	// else if ( size_str[size_str.size() - 1] == 'M' )
+	// {
+	// 	size_str.erase(size_str.size() - 1, std::string::npos);
+	// 	multi = 1000000;
+	// }
+	// if (size_str.size() > 4)
+	// 	return 0 ;
+	int		value;
 	std::istringstream(size_str) >> value;
-	return value * multi ;
+	return value ;
 }
 
 void	Server::set_attributs(std::string& server_config)
@@ -208,27 +206,27 @@ void	Server::set_listen(std::string location_config)
 	}
 }
 
-void	Server::set_cgi_extension(std::string server_config)
-{
-	size_t		begin;
-	size_t		end;
-	std::string	tmp;
+// void	Server::set_cgi_extension(std::string server_config)
+// {
+// 	size_t		begin;
+// 	size_t		end;
+// 	std::string	tmp;
 
-	begin = server_config.find("\"cgi_extension\"") + 16;
-	if ( begin == std::string::npos + 14 )
-		return ;
-	end = server_config.find('\n', begin);
-	tmp = server_config.substr(begin, end - begin);
-	begin = 0;
-	end = tmp.find(' ', begin);
-	while ( end != std::string::npos ) //à checker
-	{
-		_cgi_extension.push_back(tmp.substr(begin, end - begin));
-		begin = end + 1;
-		end = tmp.find(' ', begin);
-	}
-	_cgi_extension.push_back(tmp.substr(begin, end - begin));
-}
+// 	begin = server_config.find("\"cgi_extension\"") + 16;
+// 	if ( begin == std::string::npos + 14 )
+// 		return ;
+// 	end = server_config.find('\n', begin);
+// 	tmp = server_config.substr(begin, end - begin);
+// 	begin = 0;
+// 	end = tmp.find(' ', begin);
+// 	while ( end != std::string::npos ) //à checker
+// 	{
+// 		_cgi_extension.push_back(tmp.substr(begin, end - begin));
+// 		begin = end + 1;
+// 		end = tmp.find(' ', begin);
+// 	}
+// 	_cgi_extension.push_back(tmp.substr(begin, end - begin));
+// }
 
 bool	Server::is_valid_server()
 {
