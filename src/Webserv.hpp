@@ -3,10 +3,10 @@
 # define WEBSERV_HPP
 
 # define ASSETS_DIR "assets"
-# define DEFAULT_CONFIG_PATH "./config/config_files/default.conf"
+# define DEFAULT_CONFIG_PATH "config/default.conf"
 
-// # include "Cluster_linux.hpp"
-# include "Cluster.hpp"
+# include "Cluster_linux.hpp"
+// # include "Cluster.hpp"
 # include "Socket.hpp"
 # include "Server.hpp"
 # include "Request.hpp"

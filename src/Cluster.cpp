@@ -343,5 +343,7 @@ bool	Cluster::is_valid_config()
 		if ( _servers[i].is_valid_server() == false )
 			return false ;
 	}
+	if ( _servers.size() == 0 )
+		return false ;
 	return true ;
 }

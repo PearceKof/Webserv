@@ -239,5 +239,5 @@ bool	Server::is_valid_server()
 	if ( _server_name == "" )
 		_server_name = "default";
 
-	return true ;;
+	return true ;
 }

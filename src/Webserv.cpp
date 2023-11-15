@@ -3,9 +3,9 @@
 
 int	main(int ac, char **av)
 {
-	if ( ac != 2 )
+	if ( 2 < ac )
 	{
-		std::cerr << "Bad arguments" << std::endl;
+		std::cerr << "[ERROR]: Bad arguments" << std::endl;
 		return EXIT_FAILURE ;
 	}
 
@@ -13,10 +13,16 @@ int	main(int ac, char **av)
 
 	try
 	{
-		cluster.config(av[1]);
-		cluster.print_all();
+		if (ac == 2)
+			cluster.config(av[1]);
+		else
+			cluster.config(DEFAULT_CONFIG_PATH);
 		if ( cluster.is_valid_config() == false )
+		{
+			std::cerr << "[ERROR]: Invalid configuration file" << std::endl;
 			return EXIT_FAILURE ;
+		}
+		cluster.print_all();
 		cluster.run();
 	}
 	catch (std::exception &e)
