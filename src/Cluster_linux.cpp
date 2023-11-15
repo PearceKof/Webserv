@@ -274,7 +274,7 @@ void	Cluster::print_all()
 		std::cout << "redirect    : [" << _servers[i].get_redirect() << "]" << std::endl;
 		std::cout << "upload_path : [" << _servers[i].get_upload_path() << "]" << std::endl;
 		std::cout << "cgi_path    : [" << _servers[i].get_cgi_path() << "]" << std::endl;
-	
+		std::cout << "cgi_path    : [" << _servers[i].get_upload_path() << "]" << std::endl;
 		std::cout << "cgi ext     : [";
 		for ( size_t j = 0 ; j < _servers[i].get_cgi_extension_size() ; j++ )
 		{

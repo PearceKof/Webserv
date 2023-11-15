@@ -24,7 +24,6 @@ class Server
 		std::string	_cgi_path;
 		bool	_allow_methods[3];
 		bool	_auto_index;
-		bool	_upload;
 		int		_client_max_body_size;
 
 		void	set_locations(std::string& server_config);
@@ -51,7 +50,7 @@ class Server
 		std::string	get_cgi_path() { return _cgi_path ; };
 		bool		get_allow_methods(int index) { return _allow_methods[index] ; };
 		bool		get_auto_index() { return _auto_index ; };
-		bool		get_upload() { return _upload ; };
+		// bool		get_upload() { return _upload ; };
 		int			get_client_max_body_size() { return _client_max_body_size ; };
 		std::string	get_error_page(int index) { return _error_pages[index] ; };
 		bool		is_valid_server();

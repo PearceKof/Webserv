@@ -1,7 +1,7 @@
 
 #include "Server.hpp"
 
-Server::Server(std::string server_config) : _auto_index(false), _upload(false), _client_max_body_size(1000000)
+Server::Server(std::string server_config) : _auto_index(false), _client_max_body_size(1000000)
 {
 	set_locations(server_config);
 	set_error_pages(server_config);
@@ -87,15 +87,12 @@ void	Server::set_attributs(std::string& server_config)
 	_redirect = trim_config("\"redirect\"", server_config);
 	_upload_path = trim_config("\"upload_path\"", server_config);
 	_cgi_path = trim_config("\"cgi_path\"", server_config);
+	_upload_path = trim_config("\"upload_path\"", server_config);
 
 	_client_max_body_size =  set_client_max_body_size(trim_config("\"client_max_body_size\"", server_config));
-	if ( _client_max_body_size == 0 )
-		std::cerr << "Wrong body size." << std::endl;
 	
 	if ( !(trim_config("\"autoindex\"", server_config).compare("on")) )
 		_auto_index = true;
-	if ( !(trim_config("\"autoindex\"", server_config).compare("on")) )
-		_upload = true;
 	
 }
 

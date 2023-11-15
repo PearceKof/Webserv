@@ -22,7 +22,7 @@ class Location
 		std::string	_client_max_body_size;
 		bool	_allow_methods[3];
 		bool	_auto_index;
-		bool	_upload;
+		// bool	_upload;
 
 		void	set_attributs(std::string& location_config);
 		void	set_error_pages(std::string location_config);
@@ -44,7 +44,7 @@ class Location
 		size_t		get_cgi_extension_size() { return _cgi_extension.size(); };
 		bool		get_allow_methods(int index) { return _allow_methods[index] ; };
 		bool		get_auto_index() { return _auto_index ; };
-		bool		get_upload() { return _upload ; };
+		// bool		get_upload() { return _upload ; };
 		std::string	get_client_max_body_size() { return _client_max_body_size ; };
 		std::string	get_error_page(int index) { return _error_pages[index] ; };
 };

@@ -376,6 +376,7 @@ std::string	get_filename(std::string body)
 
 void	Request::upload_file(std::string boundary)
 {
+	Location active_location = _server->get_locations()[_path];
 	std::cerr << "[DEBUG]: handle_POST found boundary :[" << boundary << "]" << std::endl;
 	std::string filename = get_filename(_body_request);
 	std::cerr << "[DEBUG]: handle_POST filename =[" << filename << "]" << std::endl;
@@ -389,10 +390,31 @@ void	Request::upload_file(std::string boundary)
 	std::cerr << "[DEBUG]: handle_POST body_trimmed =[" << body_trimmed << "]" << std::endl;
 
 	std::string path;
-	// if ( _active_location->get_root() != "" )
-	// 	path = _active_location->get_root() + + "/" + filename;
-	// else if ( _server->get_root() != "" )
-	// 	path = _server->get_root() + + "/" + filename;
+	if ( active_location.get_upload_path() != "" )
+		path = active_location.get_upload_path() + "/" + filename;
+	else if ( _server->get_upload_path() != "" )
+		path = _server->get_upload_path() + "/" + filename;
+	else
+		path = DEFAULT_UPLOAD_PATH"/" + filename;
+
+	std::cerr << "[DEBUG]: path to the uploaded file=[" << path << "]" << std::endl;
+
+	if ( !access(path.c_str(), F_OK) )
+	{
+		return error(409);
+	}
+	else
+	{
+		std::ofstream ofs(path);
+		ofs.write(body_trimmed.c_str(), body_trimmed.size());
+		ofs.close();
+	}
+	_status_code = "201 Created";
+	_body_response = body_trimmed;
+	_content_type = _mime.get_content_type(filename);
+	_content_lenght = std::to_string(_body_response.size());
+	_header_response += "Location: " + path;
+
 }
 
 void	Request::handle_POST()

@@ -3,7 +3,7 @@
 
 Location::Location() {}
 
-Location::Location(std::string location_config) : _auto_index(false), _upload(false)
+Location::Location(std::string location_config) : _auto_index(false)
 {
 	set_attributs(location_config);
 	set_error_pages(location_config);
@@ -25,8 +25,6 @@ void	Location::set_attributs(std::string& location_config)
 
 	if ( !(trim_config("\"autoindex\"", location_config).compare("on")) )
 		_auto_index = true;
-	if ( !(trim_config("\"autoindex\"", location_config).compare("on")) )
-		_upload = true;
 }
 
 void	Location::set_error_pages(std::string location_config)
