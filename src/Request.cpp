@@ -216,7 +216,7 @@ void	Request::create_response()
 	}
 	else if ( _cgi_path != "")
 	{
-		std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]" << std::endl;
+		std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]\npath =[" << _path <<"]"<< std::endl;
 		// on gére les cgi ici
 	}
 	else
