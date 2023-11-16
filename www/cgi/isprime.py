@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+
 import cgi cgitb
 
 cgitb.enable()
@@ -26,17 +27,7 @@ if is_prime(num):
 else:
 	content = f"<output>{num} is not prime :)</output>"
 
-#print("Content-Type: text/html")
-#print(f"Content-Length: {len(content)}")
-#print()
-#print(content)
-
-print ("Content-type:text/html\n") 
-print ("<html>") 
-print ("<head>") 
-print ("<title>First CGI Program</title>") 
-print ("</head>") 
-print ("<body>") 
-print ("<h2>Hello World</h2>")
-print ("</body>")
-print ("</html>")
+print("Content-Type: text/plain\n")
+print(f"Content-Length: {len(content)}")
+print()
+print(content)
