@@ -1,5 +1,6 @@
 
 #include "Request.hpp"
+#include <unistd.h>
 
 Request::Request()
 {
@@ -212,8 +213,25 @@ void	Request::create_response()
 	}
 	else if ( _cgi_path != "")
 	{
+		int pipe_fd[2];
+		std::string res;
+		if(pipe(pipe_fd) == -1)
+			error(500);
+		pid_t pid = fork();
+		if(pid == -1)
+			error(500);
+		else if(pid == 0)
+		{
+			close(pipe_fd[0]);
+			dup2(pipe_fd[1], STDOUT_FILENO);
+			close(pipe_fd[1]);
+			char interpreter[] = "#!/usr/bin/python3";
+			char *argv[] = {interpreter, NULL, NULL};
+			char script[_cgi_path.length() + 1];
+			strcpy(script, _cgi_path.c_str());
+			execve(script, argv, NULL);
+		}
 		std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]\npath =[" << _path <<"]"<< std::endl;
-		// on gére les cgi ici
 	}
 	else
 	{
