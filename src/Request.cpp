@@ -56,20 +56,31 @@ void	Request::set_path(std::map<std::string, Location> locations)
 	{
 		if ( _path == it->first || (_path == "/" && it->first == "/") )
 		{
-			std::string root = locations[it->first].get_root();
-
-
-			if ( root == "" )
+			std::string root;
+			if ( locations[it->first].get_root() != "" )
+				root = locations[it->first].get_root();
+			else if ( _server->get_root() != "" )
 				root = _server->get_root();
+			else
+				root = DEFAULT_ROOT;
 
 			if (locations[it->first].get_index() != "")
 				_path = root + locations[it->first].get_index();
+
 			_active_location = it->first;
 			return ;
 		}
 		if (locations[it->first].get_cgi_path() != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos)
 		{
-			_cgi_path = locations[it->first].get_cgi_path();
+			std::string root;
+			if ( locations[it->first].get_root() != "" )
+				root = locations[it->first].get_root();
+			else if ( _server->get_root() != "" )
+				root = _server->get_root();
+			else
+				root = DEFAULT_ROOT;
+
+			_cgi_path = root + locations[it->first].get_cgi_path();
 			return ;
 		}
 	}
@@ -216,10 +227,10 @@ void	Request::create_response()
 		int pipe_fd[2];
 		std::string res;
 		if(pipe(pipe_fd) == -1)
-			error(500);
+			error(500, "Internal Server Error");
 		pid_t pid = fork();
 		if(pid == -1)
-			error(500);
+			error(500, "Internal Server Error");
 		else if(pid == 0)
 		{
 			close(pipe_fd[0]);
@@ -230,7 +241,14 @@ void	Request::create_response()
 			char script[_cgi_path.length() + 1];
 			strcpy(script, _cgi_path.c_str());
 			execve(script, argv, NULL);
+			exit(EXIT_FAILURE);
 		}
+		else
+		{
+			close(pipe_fd[1]);
+		}
+		waitpid(-1, NULL, 0);
+			perror("excve");
 		std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]\npath =[" << _path <<"]"<< std::endl;
 	}
 	else

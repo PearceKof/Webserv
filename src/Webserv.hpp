@@ -13,6 +13,7 @@
 # include "Server.hpp"
 # include "Request.hpp"
 # include "Location.hpp"
+# include <sys/wait.h>
 
 # include <cstdlib>
 # include <iostream>
