@@ -224,32 +224,65 @@ void	Request::create_response()
 	}
 	else if ( _cgi_path != "")
 	{
-		int pipe_fd[2];
-		std::string res;
-		if(pipe(pipe_fd) == -1)
-			error(500, "Internal Server Error");
-		pid_t pid = fork();
-		if(pid == -1)
-			error(500, "Internal Server Error");
-		else if(pid == 0)
+		std::string command = "python " + _cgi_path;
+
+    	try
 		{
-			close(pipe_fd[0]);
-			dup2(pipe_fd[1], STDOUT_FILENO);
-			close(pipe_fd[1]);
-			char interpreter[] = "#!/usr/bin/python3";
-			char *argv[] = {interpreter, NULL, NULL};
-			char script[_cgi_path.length() + 1];
-			strcpy(script, _cgi_path.c_str());
-			execve(script, argv, NULL);
-			exit(EXIT_FAILURE);
-		}
-		else
+        // Lancer le processus Python en utilisant std::system
+			int exitCode = std::system(command.c_str());
+
+			// Vérifier si l'exécution du script Python s'est terminée correctement
+			if (exitCode == 0) {
+				std::cout << "Script Python exécuté avec succès." << std::endl;
+			}
+			else
+			{
+				std::cerr << "Erreur lors de l'exécution du script Python. Code de sortie : " << exitCode << std::endl;
+			}
+    	}
+		catch (const std::exception& e)
 		{
-			close(pipe_fd[1]);
-		}
-		waitpid(-1, NULL, 0);
-			perror("excve");
-		std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]\npath =[" << _path <<"]"<< std::endl;
+        	std::cerr << "Exception lors de l'exécution du script Python : " << e.what() << std::endl;
+    	}
+		// std::string	absolutePath = "/Users/baki/Desktop/19/web/www/cgi";
+		// const char	*pythonExecutable = "/usr/bin/pythonblabla";
+		// char	*argv[] = {(char*)pythonExecutable, (char*)a.c_str(), nullptr};
+		// char	*envp[] = {nullptr};
+		
+		// pid_t pid = fork();
+		// if(pid == -1)
+		// {
+		// 	perror("fork");
+		// 	exit(EXIT_FAILURE);
+		// }
+		// else if(pid == 0)
+		// {
+		// 	std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]\npath =[" << _path <<"]"<< std::endl;
+		// 	std::cerr << "[DEBUG]: omfg it works ;-; argv[1] = [" << argv[1] << "]\npath =[" << _path <<"]"<< std::endl;
+		// 	if(execve(pythonExecutable, argv, envp) == -1)
+		// 	{
+		// 		perror("execve");
+		// 		exit(EXIT_FAILURE);
+		// 	}
+		// }
+		// else
+		// {
+		// 	int status;
+		// 	waitpid(pid, &status, 0);
+			
+		// 	if (WIFEXITED(status))
+		// 	{
+		// 		int exitCode = WEXITSTATUS(status);
+		// 		std::cout << "Le script Python s'est terminé avec le code de sortie : " << exitCode << std::endl;
+		// 	}
+		// 	else
+		// 	{
+		// 		std::cerr << "Le script Python ne s'est pas terminé normalement." << std::endl;
+		// 		exit(EXIT_FAILURE);
+		// 	}
+		// }
+		//perror("excve");
+		//std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]\npath =[" << _path <<"]"<< std::endl;
 	}
 	else
 	{
