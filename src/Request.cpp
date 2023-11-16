@@ -17,6 +17,7 @@ Request::Request()
 	_body_is_unfinished = false;
 	_max_body_size_reached = false;
 	_content_lenght = "0";
+	_active_location = "";
 
 }
 
@@ -40,15 +41,13 @@ void	Request::set_path(std::map<std::string, Location> locations)
 	size_t begin;
 	size_t end;
 	std::string extension = "default";
+
 	if ( _mime.is_a_file(_request) )
 	{
 		_request_a_file = true;
-		begin = _request.find('/');
-		end = _request.find(' ', begin);
-		_path = _request.substr(begin, end - begin);
-		begin = _request.find('.');
-		end = _request.find(' ', begin);
-		extension = _request.substr(begin, end - begin);
+		begin = _path.find_last_of('.');
+		end = _path.find(' ', begin);
+		extension = _path.substr(begin, end - begin);
 	}
 	_content_type = _mime.get_content_type(extension);
 
@@ -64,7 +63,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 			if (locations[it->first].get_index() != "")
 				_path = root + locations[it->first].get_index();
-
+			_active_location = it->first;
 			return ;
 		}
 		if (locations[it->first].get_cgi_path() != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos)
@@ -73,7 +72,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			return ;
 		}
 	}
-
+	_path = DEFAULT_ROOT + _path;
 }
 
 Request::~Request()
@@ -201,18 +200,15 @@ void	Request::create_response()
 
 	if ( _method.empty() || _path.empty() || _version.empty() )
 	{
-		std::cerr << "[DEBUG]: error 400 (invalid request)" << std::endl;
-		error(400);
+		error(400, "Bad Request");
 	}
 	else if ( _max_body_size_reached )
 	{
-		std::cerr << "[DEBUG]: error 413 (body size max reached)" << std::endl;
-		error(413);
+		error(413, "Unauthorized");
 	}
 	else if ( _version != "HTTP/1.1")
 	{
-		std::cerr << "[DEBUG]: error 505 (unsuported version)" << std::endl;
-		error(505);
+		error(505, "HTTP Version Not Supported");
 	}
 	else if ( _cgi_path != "")
 	{
@@ -221,17 +217,19 @@ void	Request::create_response()
 	}
 	else
 	{
-		if ( _method == "GET" )
+		if ( _method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
 			handle_GET();
-		else if ( _method == "POST")
+		else if ( _method == "POST" && _server->get_locations()[_active_location].get_allow_methods(POST))
 			handle_POST();
-		// else if ( _method == "DELETE" )
-		// 	handle_DELETE();
-		// else if ( !_method.empty())
-		// {
-		// 	std::cerr << "[DEBUG]: error 501 (Not Implemented)" << std::endl;
-		// 	// error(501);
-		// }
+		else if ( _method == "DELETE" && _server->get_locations()[_active_location].get_allow_methods(DELETE) )
+			handle_DELETE();
+		else
+		{
+			if ( _method == "GET" ||  _method == "POST" || _method == "DELETE" )
+				error(405, "Method Not Allowed");
+			else
+				error(501, "Not Implemented");
+		}
 	}
 
 	generate_full_response();
@@ -272,7 +270,7 @@ void	Request::send_auto_index()
 	DIR *dir = opendir(_path.c_str());
 	if ( dir == NULL )
 	{
-		error(403);
+		error(403, "Forbidden");
 		return ;
 	}
 
@@ -332,34 +330,21 @@ void	Request::handle_GET()
 		else
 		{
 			if ( location.get_index() == "" )
-				return error(404);
+				return error(404, "Not Found");
 			
 			_path += "/" + location.get_index();
 			if ( is_existing_file( _path ) )
 				load_file();
 			else
-				return error(404);
+				return error(404, "Not Found");
 		}
 	}
 	else if ( is_existing_file(  _path ) )
 	{
-		std::cerr << "\n" << _path << " IS A FILE\n" << std::endl;
-		load_file();
-	}
-	else if ( is_existing_file( ASSETS_DIR + _path ) )
-	{
-		std::cerr << "\n" << _path << " IS AN ASSETS\n" << std::endl;
-		_path = ASSETS_DIR + _path;
-		load_file();
-	}
-	else if ( is_existing_file( "." + _path ) )
-	{
-		std::cerr << "\n" << _path << " IS A path to existing file\n" << std::endl;
-		_path = "." + _path;
 		load_file();
 	}
 	else
-		return error(404);
+		return error(404, "Not Found");
 }
 
 std::string	get_filename(std::string body)
@@ -381,11 +366,11 @@ void	Request::upload_file(std::string boundary)
 	std::string filename = get_filename(_body_request);
 	std::cerr << "[DEBUG]: handle_POST filename =[" << filename << "]" << std::endl;
 	if ( filename.empty() )
-		return error(400);
+		return error(400, "Bad Request");
 	size_t	begin = _body_request.find("\r\n\r\n");
 	size_t	end = _body_request.find("\r\n--" + boundary + "--", begin);
 	if ( begin == std::string::npos || end == std::string::npos)
-		return error(400);
+		return error(400, "Bad Request");
 	std::string	body_trimmed = _body_request.substr(begin + 4, end - (begin + 4));
 	std::cerr << "[DEBUG]: handle_POST body_trimmed =[" << body_trimmed << "]" << std::endl;
 
@@ -401,7 +386,7 @@ void	Request::upload_file(std::string boundary)
 
 	if ( !access(path.c_str(), F_OK) )
 	{
-		return error(409);
+		return error(409, "Conflict");
 	}
 	else
 	{
@@ -414,37 +399,33 @@ void	Request::upload_file(std::string boundary)
 	_content_type = _mime.get_content_type(filename);
 	_content_lenght = std::to_string(_body_response.size());
 	_header_response += "Location: " + path;
-
 }
 
 void	Request::handle_POST()
 {
 	_status_code = "200 OK";
-	std::cerr << "[DEBUG]: ENTER handle_POST content-type= " << _header_request["Content-Type"] << std::endl;
+
 	size_t pos_boundary = _header_request["Content-Type"].find("boundary=");
 	if (pos_boundary != std::string::npos)
 	{
 		upload_file(_header_request["Content-Type"].substr(pos_boundary + 9));
 	}
+	else
+		error(501, "Not Implemented");
 }
 
-void	Request::error(int status_code)
+
+void	Request::handle_DELETE()
 {
-	std::string	file;
-
-	file = _server->get_root() + _server->get_error_page(status_code);
-
-	std::ifstream	content_stream(file.c_str());
-	std::stringstream stream;
-
-	stream << content_stream.rdbuf();
-	_body_response = stream.str();
-
-	if ( _body_response == "")
-		_body_response = "<h1>ERROR: " + std::to_string(status_code) + "</h1>";
-
-	_status_code = std::to_string(status_code);
-
+	_status_code = "200 OK";
+	
+	_path = "." + _path;
+	if ( is_existing_file(_path) )
+	{
+		return error(404, "Not Found");
+	}
+	if ( std::remove(_path.c_str()) )
+		return error(403, "Forbidden");
 }
 
 bool	Request::send_response()
@@ -463,4 +444,27 @@ bool	Request::send_response()
 
 	std::cerr << "left_to_send= " << _left_to_send << std::endl;
 	return response_completely_sended ;
+}
+
+void	Request::error(int status_code, std::string status_message)
+{
+	std::string	file;
+
+	file = _server->get_root() + _server->get_error_page(status_code);
+
+	std::ifstream	content_stream(file.c_str());
+	std::stringstream stream;
+
+	stream << content_stream.rdbuf();
+	_body_response = stream.str();
+
+	_status_code = std::to_string(status_code);
+	if ( status_message != "" )
+		_status_code += " " + status_message;
+
+	if ( _body_response == "")
+		_body_response = "<h1>ERROR: " + _status_code + "</h1>";
+
+	_content_type = "text/html";
+
 }

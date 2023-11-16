@@ -6,11 +6,30 @@
 				<h1>Webserv</h1>
 				<h2>Delete</h2>
 
-				<p>here for Delete wip</p>
+				<form>
+					<label for="file_to_delete">File name:</label>
+					<input type="text" id="file_to_delete" name="file_to_delete" required>
+					<input type="submit" value="Submit" id="submit_icon" >
+				</form>
+					
+				
 				<h3 style="color:whitesmoke;">Click <a href="/" style="color:red;"> HERE</a> back to homepage </h3>
 			</center>
 		</FONT>
 
 	</body>
 
+	<script>
+		let submitBtn = document.getElementById("submit_icon");
+		submitBtn.addEventListener("click", deleteFile);
+	
+		function deleteFile(event) {
+			event.preventDefault();
+			let xhr = new XMLHttpRequest();
+			let file = document.getElementsByName('file_to_delete')[0].value;
+			xhr.open('DELETE', `${file}`);
+			xhr.send();
+			xhr.onload = function() { window.location.href = "http://localhost/delete"; }
+		}
+	</script>
 </html>

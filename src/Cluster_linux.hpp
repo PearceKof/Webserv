@@ -17,10 +17,10 @@ class Request;
 class Cluster
 {
 	private:
-		std::vector<Server>			_servers;
-		std::vector<Socket>			_sockets;
+		std::vector<Server>		_servers;
+		std::vector<Socket>		_sockets;
 		std::map<int, Request>	_clients;
-		int							_kq;
+		int						_kq;
 
 		void	set_sockets();
 		void	accept_new_connection(int new_client_fd, Socket *socket);
@@ -42,8 +42,6 @@ class Cluster
 		size_t	server_size() { return _servers.size(); };
 		Socket				*get_socket(int index) { return &_sockets[index] ; };
 		std::vector<Socket> get_sockets() { return _sockets ; };
-		// std::vector<int>	&get_clients_sockets() { return _clients_sockets ; };
-		// int					get_client_socket(int index) { return _clients_sockets[index] ; };
 };
 
 #endif

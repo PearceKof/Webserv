@@ -35,6 +35,7 @@ class Request
 
 		Mime								_mime;
 		Server*								_server;
+		std::string							_active_location;
 		std::string							_cgi_path;
 	
 		int									_socket;
@@ -65,8 +66,9 @@ class Request
 
 		void		handle_GET();
 		void		handle_POST();
+		void		handle_DELETE();
 		void		upload_file(std::string boundary);
-		void		error(int status_code);
+		void		error(int status_code, std::string status_message);
 
 		std::string&	get_request() { return _request ; };
 		std::string&	get_response() { return _response ; };

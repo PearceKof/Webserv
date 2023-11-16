@@ -5,6 +5,7 @@
 # define ASSETS_DIR "assets"
 # define DEFAULT_CONFIG_PATH "config/default.conf"
 # define DEFAULT_UPLOAD_PATH "www/upload"
+# define DEFAULT_ROOT "www"
 
 # include "Cluster_linux.hpp"
 // # include "Cluster.hpp"
