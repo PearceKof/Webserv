@@ -1,5 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 import cgi cgitb
+
+cgitb.enable()
+
+data = cgi.FieldStorage()
 
 def is_prime(n):
 	if n < 2:
@@ -10,10 +14,6 @@ def is_prime(n):
 			return(False)
 		i += 1
 	return(True)
-
-cgitb.enable()
-
-data = cgi.FieldStorage()
 
 try:
 	num = int(data["value"].value)
@@ -26,7 +26,17 @@ if is_prime(num):
 else:
 	content = f"<output>{num} is not prime :)</output>"
 
-print("Content-Type: text/html")
-print(f"Content-Length: {len(content)}")
-print()
-print(content)
+#print("Content-Type: text/html")
+#print(f"Content-Length: {len(content)}")
+#print()
+#print(content)
+
+print ("Content-type:text/html\n") 
+print ("<html>") 
+print ("<head>") 
+print ("<title>First CGI Program</title>") 
+print ("</head>") 
+print ("<body>") 
+print ("<h2>Hello World</h2>")
+print ("</body>")
+print ("</html>")
