@@ -181,6 +181,7 @@ int	Cluster::read_request(int client_socket)
 	}
 	else
 	{
+		std::cerr << "DEBUG" << std::endl;
 		return _clients[client_socket].treat_received_data(buf, nbytes) ;
 	}
 }
@@ -205,15 +206,6 @@ void	Cluster::read_event(int client_socket)
 
 void	Cluster::write_event(int client_socket)
 {
-	// struct epoll_event ev_set;
-
-	// if (_clients[client_socket].get_request() != "")
-	// 	std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
-	
-	// std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
-
-	// Request request();
-	// _clients[client_socket].handle_request();
 	if ( _clients[client_socket].send_response() )
 	{
 		_clients[client_socket].get_request() = "";

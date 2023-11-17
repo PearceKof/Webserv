@@ -94,28 +94,34 @@ Request::~Request()
 int Request::read_body( ssize_t nbytes, char *buf)
 {
 	if ( _left_to_read <= 0 && !_request_is_chunked )
+	{
+		std::cerr << "\n\n----------0------------\n\n" << std::endl;
 		return 0;
+	}
 	if ( _server->get_client_max_body_size() != 0 && _server->get_client_max_body_size() < (_body_request.size() + nbytes) )
 	{
+		std::cerr << "\n\n----------1------------\n\n" << std::endl;
 		_max_body_size_reached = true;
 		_left_to_read = 0;
 		return 0;
 	}
 
-	for ( ssize_t i = 0 ; i < nbytes ; i++ )
-		_body_request.push_back(buf[i]);
+	_body_request.append(buf);
 	
-	if ( _left_to_read )
+	if ( _left_to_read && _request_is_chunked == false )
 	{
+		std::cerr << "\n\n----------2------------\n\n" << std::endl;
 		_left_to_read -= nbytes;
 		return _left_to_read > 0 ;
 	}
 	else if ( _request_is_chunked )
 	{
+		std::cerr << "\n\n----------3------------\n\n" << std::endl;
 		bool	end_of_file_reached = ( _body_request.find("\r\n0\r\n\r\n") != std::string::npos );
-		return end_of_file_reached ;
+		return !end_of_file_reached ;
 	}
-	return 1 ;
+	std::cerr << "\n\n----------4-------------\n\n" << std::endl;
+	return 0 ;
 
 }
 
@@ -132,6 +138,7 @@ void Request::parse_request()
 		value_header.erase(value_header.find_last_not_of(" \r\n\t") + 1, value_header.length());
 		key_header.erase(0, key_header.find_first_not_of(" \r\n\t"));
 		_header_request[key_header] = value_header;
+		std::cerr << "\n\nICI _header_request[" << key_header << "] = [" << value_header << "]" << std::endl;
 	}
 
 	if ( _header_request.find("Content-Length") != _header_request.end() )
@@ -146,6 +153,7 @@ void Request::parse_request()
 	{
 		_request_is_chunked = ( _header_request["Transfer-Encoding"].find("chunked") != std::string::npos );
 	}
+	std::cerr << "\n\n[DEBUG]: _request_is_chunked = " << _request_is_chunked << "Transfer-Encoding = [" << _header_request["Transfer-Encoding"] << "]" << std::endl;
 
 	size_t	boundary_pos = _request.find("boundary=") + 9;
 	if ( _request.find("boundary=") != std::string::npos + 9 )
@@ -157,14 +165,17 @@ void Request::parse_request()
 
 int	Request::treat_received_data(char *buf, ssize_t nbytes)
 {
+	// std::cerr << "buf=[" << buf << "]" << std::endl;
 	if ( _body_is_unfinished )
 		return !read_body(nbytes, buf);
+
 
 	std::string	tmp = (_request + (std::string)buf);
 	size_t pos_end_header = tmp.find("\r\n\r\n");
 
 	if ( pos_end_header == std::string::npos )
 	{
+		// std::cerr << "[DEBUG]: 1 _left_to_read=" << _left_to_read << " _request_is_chunked= " << _request_is_chunked << std::endl;
 		for ( ssize_t i = 0 ; i < nbytes ; i++ )
 			_request.push_back(buf[i]);
 
@@ -180,26 +191,35 @@ int	Request::treat_received_data(char *buf, ssize_t nbytes)
 		_left_to_read -= _body_request.size();
 
 		_body_is_unfinished = _left_to_read > 0;
+		// std::cerr << "[DEBUG]: 2 _left_to_read=" << _left_to_read << " _request_is_chunked= " << _request_is_chunked << std::endl;
 		return !_body_is_unfinished;
 	}
 }
 
 void	Request::put_back_chunked()
 {
-	// std::string	line;
-	// std::stringstream ss(_body_request);
+	std::string	line;
+	std::stringstream ss(_body_request);
 
 	std::cerr << "[DEBUG]: THIS IS A CHUNKED REQUEST !!!" << std::endl;
-	// while ( getline(ss, line) )
-	// {
-	// 	int chunk_size = std::atoi(line.c_str());
-	// 	if ( chunk_size == 0 )
-	// 		break ;
-	// 	std::string	chunk;
-	// 	chunk.resize(chunk_size);
-	// 	ss.read(&chunk[0], chunk_size);
-	// 	std::cerr << "[DEBUG]: chunk= " << chunk << std::endl;
-	// }
+	while ( std::getline(ss, line) )
+	{
+		int chunk_size = std::atoi(line.c_str());
+		if ( chunk_size == 0 )
+			break ;
+		std::string	chunk;
+
+		chunk.resize(chunk_size);
+		ss.read(&chunk[0], chunk_size);
+		// ss.ignore(2);
+		_body_response += chunk.data();
+		std::cerr << "[DEBUG]: chunk=[" << chunk << "]" << std::endl;
+	}
+	std::cerr << "[DEBUG]: end main loop" << std::endl;
+	// _body_response += line.data();
+	_body_request.clear();
+	_body_request = _body_response;
+	std::cerr << "put_back_chunked ended body =[" << _body_response << "]" << "]" << std::endl;
 
 }
 
@@ -224,6 +244,7 @@ void	Request::create_response()
 	}
 	else if ( _cgi_path != "")
 	{
+		std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]\npath =[" << _path <<"]"<< std::endl;
 		int pipe_fd[2];
 		std::string res;
 		if(pipe(pipe_fd) == -1)
@@ -237,19 +258,25 @@ void	Request::create_response()
 			dup2(pipe_fd[1], STDOUT_FILENO);
 			close(pipe_fd[1]);
 			char interpreter[] = "#!/usr/bin/python3";
-			char *argv[] = {interpreter, NULL, NULL};
-			char script[_cgi_path.length() + 1];
+			char script[_cgi_path.size()];
 			strcpy(script, _cgi_path.c_str());
+			char *argv[] = {script, interpreter, NULL};
 			execve(script, argv, NULL);
 			exit(EXIT_FAILURE);
 		}
 		else
 		{
 			close(pipe_fd[1]);
+
+			char buf[120];
+			ssize_t ret;
+			while ( (ret = read(pipe_fd[0] , buf, 120)) > 0)
+					_body_response.append(buf, 120);
+			close (pipe_fd[0]);
+			std::cerr << "[DEBUG]: cgi sended [" << _body_response << "]" << std::endl;
 		}
 		waitpid(-1, NULL, 0);
-			perror("excve");
-		std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]\npath =[" << _path <<"]"<< std::endl;
+		perror("excve");
 	}
 	else
 	{
@@ -261,6 +288,7 @@ void	Request::create_response()
 			handle_DELETE();
 		else
 		{
+			std::cerr << "[DEBUG]: _method =[" << _method << "]" << std::endl;
 			if ( _method == "GET" ||  _method == "POST" || _method == "DELETE" )
 				error(405, "Method Not Allowed");
 			else
@@ -398,9 +426,7 @@ std::string	get_filename(std::string body)
 void	Request::upload_file(std::string boundary)
 {
 	Location active_location = _server->get_locations()[_path];
-	std::cerr << "[DEBUG]: handle_POST found boundary :[" << boundary << "]" << std::endl;
 	std::string filename = get_filename(_body_request);
-	std::cerr << "[DEBUG]: handle_POST filename =[" << filename << "]" << std::endl;
 	if ( filename.empty() )
 		return error(400, "Bad Request");
 	size_t	begin = _body_request.find("\r\n\r\n");
@@ -408,7 +434,6 @@ void	Request::upload_file(std::string boundary)
 	if ( begin == std::string::npos || end == std::string::npos)
 		return error(400, "Bad Request");
 	std::string	body_trimmed = _body_request.substr(begin + 4, end - (begin + 4));
-	std::cerr << "[DEBUG]: handle_POST body_trimmed =[" << body_trimmed << "]" << std::endl;
 
 	std::string path;
 	if ( active_location.get_upload_path() != "" )
@@ -418,12 +443,8 @@ void	Request::upload_file(std::string boundary)
 	else
 		path = DEFAULT_UPLOAD_PATH"/" + filename;
 
-	std::cerr << "[DEBUG]: path to the uploaded file=[" << path << "]" << std::endl;
-
 	if ( !access(path.c_str(), F_OK) )
-	{
 		return error(409, "Conflict");
-	}
 	else
 	{
 		std::ofstream ofs(path);
@@ -445,6 +466,11 @@ void	Request::handle_POST()
 	if (pos_boundary != std::string::npos)
 	{
 		upload_file(_header_request["Content-Type"].substr(pos_boundary + 9));
+	}
+	else if ( _header_request["Content-Type"].find("application/x-www-form-urlencoded") != std::string::npos )
+	{
+		std::cerr << "\n\n[DEBUG] application/x-www-form-urlencoded\n\n" << std::endl;
+		_body_response = "response to application/x-www-form-urlencoded";
 	}
 	else
 		error(501, "Not Implemented");
@@ -471,14 +497,15 @@ bool	Request::send_response()
 
 	nbytes = send(_socket, _response.c_str(), 120, 0);
 
-	std::cerr << "[DEBUG]: sended " << nbytes << " nbytes of the response" << std::endl;
 	_response.erase(0, nbytes);
 
 	_left_to_send -= nbytes;
 	if ( _left_to_send <= 0 )
+	{
+		std::cout << "[WEBSERV]: sended response to client [" << _socket << "] successfully" << std::endl;
 		response_completely_sended = true;
+	}
 
-	std::cerr << "left_to_send= " << _left_to_send << std::endl;
 	return response_completely_sended ;
 }
 
