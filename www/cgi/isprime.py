@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 
-import cgi
+
+import os
+
 print("Content-type: text/html\n")
-data = cgi.FieldStorage()
+
+query_string = os.environ.get("QUERY_STRING", "")
+print(f"Query String: {query_string}")
+
+query_parameters = dict(qp.split("=") for qp in query_string.split("&") if "=" in qp and len(qp.split("=")) == 2)
+print(f"Query Parameters: {query_parameters}")
 
 # def is_prime(n):
 # 	if n < 2:
@@ -14,8 +21,8 @@ data = cgi.FieldStorage()
 # 		i += 1
 # 	return(True)
 
-if "value" in data:
-	num = data["value"].value
+if "value" in query_parameters:
+	num = query_parameters["value"]
 	try:
 		num = int(num)
 		result = f"La valeur entrée par l'utilisateur est : {num}"
