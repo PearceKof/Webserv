@@ -277,8 +277,9 @@ void	Request::create_response()
 		}
 		else if(pid == 0)
 		{
-			char *query_string = getenv("QUERY_STRING");
-			char *envp[] = {query_string,
+			std::string query_string = _path.substr(_path.find("?") + 1);
+			std::cerr << "Query String = " << query_string << std::endl;
+			char *envp[] = {(char*)query_string.c_str(),
 						(char*)"REQUEST_METHOD=GET",
 						nullptr};
 			if(execve(pythonExecutable, argv, envp) == -1)
