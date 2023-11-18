@@ -2,8 +2,6 @@
 
 import os
 
-print("Content-type: text/html\n")
-
 value = os.environ["value"]
 
 def is_prime(n):
@@ -33,6 +31,7 @@ result = f"""
 <html>
 <head>
 	<title>Résultat</title>
+	<meta charset="UTF-8">
 </head>
 <body>
 	<h1>Résultat du script CGI</h1>
