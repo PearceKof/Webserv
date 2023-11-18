@@ -294,6 +294,7 @@ void	Request::create_response()
 				close(pipe_fd[0]);
 				waitpid(-1, NULL, 0);
 				std::cout << "-------- BODY FROM SCRIPT --------\n" << bodyFromScript << std::endl;
+				_body_response.append(bodyFromScript);
 			}
 			else
 			{
