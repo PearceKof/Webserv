@@ -290,9 +290,6 @@ void	Request::create_response()
 		}
 		else
 		{
-			int status;
-			waitpid(pid, &status, 0);
-			
 			if (WIFEXITED(status))
 			{
 				int exitCode = WEXITSTATUS(status);

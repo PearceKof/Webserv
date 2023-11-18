@@ -20,15 +20,15 @@ if value:
 	try:
 		num = int(value)
 		if is_prime(num):
-			result = f"<output>{num} est un nombre premier :)</output>"
+			r = f"<output>{num} est un nombre premier :)</output>"
 		else:
-			result = f"<output>{num} n'est pas un nombre premier :)</output>"
+			r = f"<output>{num} n'est pas un nombre premier :)</output>"
 	except ValueError:
-		result = "Veuillez entrer un nombre entier valide."
+		r = "Veuillez entrer un nombre entier valide."
 else:
-	result = "Veuillez soumettre un formulaire avec une valeur."
+	r = "Veuillez soumettre un formulaire avec une valeur."
 
-print(f"""
+result = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -36,7 +36,8 @@ print(f"""
 </head>
 <body>
 	<h1>Résultat du script CGI</h1>
-	<p>{result}</p>
+	<p>{r}</p>
 </body>
 </html>
-""")
+"""
+print(result)
