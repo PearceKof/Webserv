@@ -52,6 +52,7 @@ class Request
 		void		generate_full_response();
 		void		send_auto_index();
 		void		redirection(std::string redirection);
+		bool		is_valid_cgi_extension();
 	public:
 		Request();
 		~Request();
@@ -61,9 +62,11 @@ class Request
 		void 		parse_request();
 		void		create_response();
 		void		put_back_chunked();
-		int		send_response();
+		int			send_response();
 		void		load_file();
 		// void		redirection(std::string redirection);
+
+		std::string	cgi();
 
 		void		handle_GET();
 		void		handle_POST();
