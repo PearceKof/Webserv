@@ -61,8 +61,10 @@ class Request
 		void 		parse_request();
 		void		create_response();
 		void		put_back_chunked();
-		int		send_response();
+		int			send_response();
 		void		load_file();
+
+		std::string	cgi();
 
 		void		handle_GET();
 		void		handle_POST();
