@@ -22,6 +22,7 @@ $(NAME): $(OBJ)
 	$(CC) $(FLAGS) -c $< -o $@
 
 clean:
+	rm -f a.out
 	rm -f $(OBJ)
 	rm -f $(LINUX_OBJ)
 
@@ -29,6 +30,11 @@ fclean: clean
 	rm -f $(NAME)
 
 re: fclean all
+
+test:
+	rm -f a.out
+	$(CC) test.cpp
+	./a.out localhost
 
 relinux : fclean linux
 
