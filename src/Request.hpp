@@ -63,6 +63,7 @@ class Request
 		void		put_back_chunked();
 		int		send_response();
 		void		load_file();
+		// void		redirection(std::string redirection);
 
 		void		handle_GET();
 		void		handle_POST();

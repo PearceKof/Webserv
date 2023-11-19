@@ -5,7 +5,7 @@ bool	is_directory( std::string path )
 {
 	struct stat st;
 
-	path = "." + path;
+	// path = "." + path;
 	if ( stat(path.c_str(), &st) )
 		return false ;
 

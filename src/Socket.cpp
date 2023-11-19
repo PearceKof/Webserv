@@ -29,7 +29,7 @@ Socket::Socket(int port, Server *server) : _server_socket_fd(socket(AF_INET, SOC
 		throw std::runtime_error("bind function failed");
 	}
 
-	if ( listen(_server_socket_fd, 10) < 0 )
+	if ( listen(_server_socket_fd, 1000) < 0 )
 	{
 		throw std::runtime_error("listen function failed");
 	}

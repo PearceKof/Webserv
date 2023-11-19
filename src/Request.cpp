@@ -43,8 +43,9 @@ void	Request::set_path(std::map<std::string, Location> locations)
 	size_t end;
 	std::string extension = "default";
 
-	if ( _mime.is_a_file(_request) )
+	if ( _mime.is_a_file(_path) )
 	{
+		std::cerr << "[DEBUG]: _request_a_file= is true " << std::endl;
 		_request_a_file = true;
 		begin = _path.find_last_of('.');
 		end = _path.find(' ', begin);
@@ -54,23 +55,8 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
 	{
-		if ( _path == it->first || (_path == "/" && it->first == "/") )
-		{
-			std::string root;
-			if ( locations[it->first].get_root() != "" )
-				root = locations[it->first].get_root();
-			else if ( _server->get_root() != "" )
-				root = _server->get_root();
-			else
-				root = DEFAULT_ROOT;
 
-			if (locations[it->first].get_index() != "")
-				_path = root + locations[it->first].get_index();
-
-			_active_location = it->first;
-			return ;
-		}
-		if (locations[it->first].get_cgi_path() != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos)
+		if ( locations[it->first].get_cgi_path() != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos )
 		{
 			std::string root;
 			if ( locations[it->first].get_root() != "" )
@@ -81,10 +67,33 @@ void	Request::set_path(std::map<std::string, Location> locations)
 				root = DEFAULT_ROOT;
 
 			_cgi_path = root + locations[it->first].get_cgi_path();
+			_active_location = it->first;
+			return ;
+		}
+		if ( (_path.find(it->first) == 0 && it->first != "/") || (_path == "/" && it->first == "/") )
+		{
+			std::string root;
+			if ( locations[it->first].get_root() != "" )
+				root = locations[it->first].get_root();
+			else if ( _server->get_root() != "" )
+				root = _server->get_root();
+			else
+				root = DEFAULT_ROOT;
+			
+
+			std::cerr << "[DEBUG]: _request_a_file= " << _request_a_file << " && false && locations[it->first].get_index() = [" << locations[it->first].get_index() << "]" << std::endl;
+			if ( _request_a_file == false && locations[it->first].get_index() != "")
+				_path = root + locations[it->first].get_index();
+			else
+				_path = _path.replace(_path.find(it->first), it->first.size(), root);
+			// else
+			// 	_path = root + _path;
+			std::cerr << "[DEBUG]= _path= " << _path << " it->first= " << it->first << std::endl;
+			_active_location = it->first;
 			return ;
 		}
 	}
-	_path = DEFAULT_ROOT + _path;
+	// _path = DEFAULT_ROOT + _path;
 }
 
 Request::~Request()
@@ -228,6 +237,10 @@ void	Request::create_response()
 	{
 		error(505, "HTTP Version Not Supported");
 	}
+	else if ( _server->get_locations()[_active_location].get_redirect() != "" )
+	{
+		redirection(_server->get_locations()[_active_location].get_redirect());
+	}
 	else if ( _cgi_path != "")
 	{
 		std::string bodyFromScript;
@@ -291,15 +304,18 @@ void	Request::create_response()
 	}
 	else
 	{
+		// if ( _active_location == "" )
+		// 	_active_location = _path;
+
 		if ( _method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
 			handle_GET();
-		else if ( _method == "POST" && _server->get_locations()[_active_location].get_allow_methods(POST))
+		else if ( _method == "POST"  && _server->get_locations()[_active_location].get_allow_methods(POST))
 			handle_POST();
 		else if ( _method == "DELETE" && _server->get_locations()[_active_location].get_allow_methods(DELETE) )
 			handle_DELETE();
 		else
 		{
-			// std::cerr << "[DEBUG]: _method =[" << _method << "]" << std::endl;
+			std::cerr << "[DEBUG]: _method =[" << _method << "] active location = [" << _active_location << "] path = " << _path  << std::endl;
 			// if ( _method == "GET" ||  _method == "POST" || _method == "DELETE" )
 				error(405, "Method Not Allowed");
 			// else
@@ -341,7 +357,7 @@ void	Request::send_auto_index()
 	_header_response += "Date: " + daytime() + "\r\n";
 	_header_response += "Server: " + _server->get_server_name() + "\r\n";
 	_header_response += "Content-Type: text/html\r\n";
-	_path = "." + _path;
+
 	DIR *dir = opendir(_path.c_str());
 	if ( dir == NULL )
 	{
@@ -357,7 +373,7 @@ void	Request::send_auto_index()
 	while ( (dirent = readdir(dir)) != NULL )
 	{
 		std::string name = dirent->d_name;
-		std::string path = _path + "/" + name;
+		std::string path =  _active_location + "/" + name;
 
 		std::string size;
 		if ( dirent->d_type == DT_REG)
@@ -374,7 +390,7 @@ void	Request::send_auto_index()
 			size = "-";
 		
 		if ( dirent->d_type != DT_DIR )
-			_body_response += "<tr><td><a href=\"" + _path + "/" + name + "\">" + name + "</a></td><td>" + size + "</td></tr>";
+			_body_response += "<tr><td><a href=\"" + path + "\">" + name + "</a></td><td>" + size + "</td></tr>";
 	}
 	_body_response += "</table></body></html>";
 	closedir(dir);
@@ -394,8 +410,9 @@ void	Request::load_file()
 void	Request::handle_GET()
 {
 	_status_code = "200 OK";
-	Location location = _server->get_locations()[_path];
+	Location location = _server->get_locations()[_active_location];
 
+	std::cerr << "[DEBUG]: HERE _path=[" << _path << "] isdir= " << is_directory(_path) << " _active location "  << _active_location << " " << location.get_auto_index() << std::endl; 
 	if ( is_directory(_path) )
 	{
 		std::cerr << "\n" << _path << " IS A DIRECTORY\n" << std::endl;
@@ -414,7 +431,7 @@ void	Request::handle_GET()
 				return error(404, "Not Found");
 		}
 	}
-	else if ( is_existing_file(  _path ) )
+	else if ( is_existing_file( _path) )
 	{
 		load_file();
 	}
@@ -492,8 +509,9 @@ void	Request::handle_DELETE()
 {
 	_status_code = "200 OK";
 	
-	_path = "." + _path;
-	if ( is_existing_file(_path) )
+	// _path = "./" + _path;
+	std::cerr << "[DEBUG]: DELETE _path= " << _path << " is existing file: " << is_existing_file(_path) << std::endl;
+	if ( is_existing_file(_path) == false )
 	{
 		return error(404, "Not Found");
 	}
@@ -516,7 +534,7 @@ int	Request::send_response()
 	_left_to_send -= nbytes;
 	if ( _left_to_send <= 0 )
 	{
-		std::cout << "[WEBSERV]: sended full response to client	[" << _socket << "] successfully" << std::endl;
+		std::cout << "[WEBSERV]: sended full response to client [" << _socket << "] successfully" << std::endl;
 		return 1;
 	}
 

@@ -174,7 +174,7 @@ int	Cluster::read_request(int client_socket)
 	char buf[120];
 	bzero(buf, 120);
 	ssize_t nbytes = read(client_socket, buf, 120);
-	std::cerr << "[DEBUG] readed from client" << client_socket << ":[" << buf << "]" << std::endl;
+	// std::cerr << "[DEBUG] readed from client" << client_socket << ":[" << buf << "]" << std::endl;
 	if ( nbytes <= 0 )
 	{
 		close_connection(client_socket);
@@ -196,7 +196,6 @@ void	Cluster::read_event(int client_socket)
 		
 		_clients[client_socket].create_response();
 	
-		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
 		ev_set.data.fd = client_socket;
 		ev_set.events = EPOLLOUT;
 		if (epoll_ctl(_kq, EPOLL_CTL_MOD, client_socket, &ev_set) == -1)
