@@ -192,7 +192,6 @@ void	Request::put_back_chunked()
 	std::string	line;
 	std::stringstream ss(_body_request);
 
-	std::cerr << "[DEBUG]: THIS IS A CHUNKED REQUEST !!!" << std::endl;
 	while ( std::getline(ss, line) )
 	{
 		long chunk_size = std::strtol(line.c_str(), NULL, 16);
@@ -204,9 +203,7 @@ void	Request::put_back_chunked()
 		ss.read(&chunk[0], chunk_size);
 		// ss.ignore(2);
 		_body_response += chunk.data();
-		std::cerr << "[DEBUG]: chunk=[" << chunk << "]" << std::endl;
 	}
-	std::cerr << "[DEBUG]: end main loop" << std::endl;
 	// _body_response += line.data();
 	_body_request.clear();
 	_body_request = _body_response;
