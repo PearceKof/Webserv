@@ -209,6 +209,57 @@ void	Request::put_back_chunked()
 	_body_request = _body_response;
 }
 
+std::string	Request::cgi()
+{
+	std::string bodyFromScript;
+		int	pipe_fd[2];
+
+		if(pipe(pipe_fd) == -1)
+			return("error: pip");
+		
+		pid_t pid = fork();
+		if(pid == -1)
+			return("error: fork");
+		
+		else if(pid == 0)
+		{
+			const char	*pythonExecutable = "/usr/bin/python3";
+			char	*argv[] = {(char*)pythonExecutable, (char*)_cgi_path.c_str(), nullptr};
+			std::string query_string = _path.substr(_path.find("?") + 1);
+			char *envp[] = {(char*)query_string.c_str(),
+						(char*)"REQUEST_METHOD=GET",
+						nullptr};
+			
+			close(pipe_fd[0]);
+			dup2(pipe_fd[1], STDOUT_FILENO);
+			close(pipe_fd[1]);
+			
+			if(execve(pythonExecutable, argv, envp) == -1)
+				return("error: execve");
+		}
+		else
+		{
+			int status;
+			waitpid(pid, &status, 0);
+			
+			if (WIFEXITED(status))
+			{
+				close(pipe_fd[1]);
+
+				char buffer[1024];
+				ssize_t n;
+				while ((n = read(pipe_fd[0], buffer, 1024)) > 0)
+					bodyFromScript.append(buffer, n);
+				close(pipe_fd[0]);
+				waitpid(-1, NULL, 0);
+				return(bodyFromScript);
+			}
+			else
+				return("error: script");
+		}
+	return("error: something went wrong");
+}
+
 void	Request::create_response()
 {
 	set_path(_server->get_locations());
@@ -230,64 +281,9 @@ void	Request::create_response()
 	}
 	else if ( _cgi_path != "")
 	{
-		std::string bodyFromScript;
-		int	pipe_fd[2];
-		
-		const char	*pythonExecutable = "/usr/bin/python3";
-		char	*argv[] = {(char*)pythonExecutable, (char*)_cgi_path.c_str(), nullptr};
-		
-		if(pipe(pipe_fd) == -1)
-			perror("pipe");
-		pid_t pid = fork();
-		if(pid == -1)
-		{
-			perror("fork");
-			exit(EXIT_FAILURE);
-		}
-		else if(pid == 0)
-		{
-			std::string query_string = _path.substr(_path.find("?") + 1);
-			std::cerr << "Query String = " << query_string << std::endl;
-			char *envp[] = {(char*)query_string.c_str(),
-						(char*)"REQUEST_METHOD=GET",
-						nullptr};
-			
-			close(pipe_fd[0]);
-			dup2(pipe_fd[1], STDOUT_FILENO);
-			close(pipe_fd[1]);
-			
-			if(execve(pythonExecutable, argv, envp) == -1)
-			{
-				perror("execve");
-				exit(EXIT_FAILURE);
-			}
-		}
-		else
-		{
-			int status;
-			waitpid(pid, &status, 0);
-			
-			if (WIFEXITED(status))
-			{
-				//int exitCode = WEXITSTATUS(status);
-				//std::cout << "Le script Python s'est terminé avec le code de sortie : " << exitCode << std::endl;
-				close(pipe_fd[1]);
-
-				char buffer[1024];
-				ssize_t n;
-				while ((n = read(pipe_fd[0], buffer, 1024)) > 0)
-					bodyFromScript.append(buffer, n);
-				close(pipe_fd[0]);
-				waitpid(-1, NULL, 0);
-				std::cout << "-------- BODY FROM SCRIPT --------\n" << bodyFromScript << std::endl;
-				_body_response.append(bodyFromScript);
-			}
-			else
-			{
-				std::cerr << "Le script Python ne s'est pas terminé normalement." << std::endl;
-				exit(EXIT_FAILURE);
-			}
-		}
+		std::string	bodyFromScript;
+		bodyFromScript = cgi();
+		_body_response.append(bodyFromScript);
 	}
 	else
 	{
