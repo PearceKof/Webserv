@@ -233,31 +233,14 @@ void	Request::create_response()
 	}
 	else if ( _cgi_path != "")
 	{
-		// std::string command = "python " + _cgi_path;
-
-    	// try
-		// {
-        // // Lancer le processus Python en utilisant std::system
-		// 	int exitCode = std::system(command.c_str());
-
-		// 	// Vérifier si l'exécution du script Python s'est terminée correctement
-		// 	if (exitCode == 0) {
-		// 		std::cout << "Script Python exécuté avec succès." << std::endl;
-		// 	}
-		// 	else
-		// 	{
-		// 		std::cerr << "Erreur lors de l'exécution du script Python. Code de sortie : " << exitCode << std::endl;
-		// 	}
-    	// }
-		// catch (const std::exception& e)
-		// {
-        // 	std::cerr << "Exception lors de l'exécution du script Python : " << e.what() << std::endl;
-    	// }
-		//std::cerr << "[DEBUG]: omfg it works ;-; cgi_path = [" << _cgi_path << "]\npath =[" << _path <<"]"<< std::endl;
-		//std::cerr << "[DEBUG]: omfg it works ;-; argv[1] = [" << argv[1] << "]\npath =[" << _path <<"]"<< std::endl;
+		std::string bodyFromScript;
+		int	pipe_fd[2];
+		
 		const char	*pythonExecutable = "/usr/bin/python3";
 		char	*argv[] = {(char*)pythonExecutable, (char*)_cgi_path.c_str(), nullptr};
-		//std::cerr << getenv("QUERY_STRING") << std::endl;
+		
+		if(pipe(pipe_fd) == -1)
+			perror("pipe");
 		pid_t pid = fork();
 		if(pid == -1)
 		{
@@ -266,10 +249,16 @@ void	Request::create_response()
 		}
 		else if(pid == 0)
 		{
-			char *query_string = getenv("QUERY_STRING");
-			char *envp[] = {query_string,
+			std::string query_string = _path.substr(_path.find("?") + 1);
+			std::cerr << "Query String = " << query_string << std::endl;
+			char *envp[] = {(char*)query_string.c_str(),
 						(char*)"REQUEST_METHOD=GET",
 						nullptr};
+			
+			close(pipe_fd[0]);
+			dup2(pipe_fd[1], STDOUT_FILENO);
+			close(pipe_fd[1]);
+			
 			if(execve(pythonExecutable, argv, envp) == -1)
 			{
 				perror("execve");
@@ -283,8 +272,18 @@ void	Request::create_response()
 			
 			if (WIFEXITED(status))
 			{
-				int exitCode = WEXITSTATUS(status);
-				std::cout << "Le script Python s'est terminé avec le code de sortie : " << exitCode << std::endl;
+				//int exitCode = WEXITSTATUS(status);
+				//std::cout << "Le script Python s'est terminé avec le code de sortie : " << exitCode << std::endl;
+				close(pipe_fd[1]);
+
+				char buffer[1024];
+				ssize_t n;
+				while ((n = read(pipe_fd[0], buffer, 1024)) > 0)
+					bodyFromScript.append(buffer, n);
+				close(pipe_fd[0]);
+				waitpid(-1, NULL, 0);
+				std::cout << "-------- BODY FROM SCRIPT --------\n" << bodyFromScript << std::endl;
+				_body_response.append(bodyFromScript);
 			}
 			else
 			{
