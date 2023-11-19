@@ -196,7 +196,7 @@ void	Server::set_cgi_extension(std::string server_config)
 	std::string	tmp;
 
 	begin = server_config.find("\"cgi_extension\"") + 16;
-	if ( begin == std::string::npos + 14 )
+	if ( begin == std::string::npos + 16 )
 		return ;
 	end = server_config.find('\n', begin);
 	tmp = server_config.substr(begin, end - begin);
@@ -222,5 +222,5 @@ bool	Server::is_valid_server()
 	if ( _server_name == "" )
 		_server_name = "default";
 
-	return true ;;
+	return true ;
 }

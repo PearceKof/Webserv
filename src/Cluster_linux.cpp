@@ -174,6 +174,7 @@ int	Cluster::read_request(int client_socket)
 	char buf[120];
 	bzero(buf, 120);
 	ssize_t nbytes = read(client_socket, buf, 120);
+	std::cerr << "[DEBUG] readed from client" << client_socket << ":[" << buf << "]" << std::endl;
 	if ( nbytes <= 0 )
 	{
 		close_connection(client_socket);
@@ -181,7 +182,6 @@ int	Cluster::read_request(int client_socket)
 	}
 	else
 	{
-		std::cerr << "DEBUG" << std::endl;
 		return _clients[client_socket].treat_received_data(buf, nbytes) ;
 	}
 }
@@ -206,13 +206,15 @@ void	Cluster::read_event(int client_socket)
 
 void	Cluster::write_event(int client_socket)
 {
-	if ( _clients[client_socket].send_response() )
+	if ( int ret = _clients[client_socket].send_response() )
 	{
 		_clients[client_socket].get_request() = "";
 		_clients[client_socket].get_body_request() = "";
 
-		std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].get_header_request("Connection")  << "]" << std::endl;
-		close_connection(client_socket);
+		std::cerr << "[DEBUG]: client [" << client_socket << "] Connection =[" << _clients[client_socket].get_header_request("Connection")  << "]" << std::endl;
+		
+		// if (  _clients[client_socket].get_header_request("Connection") != "keep-alive" || ret == -1 )
+			close_connection(client_socket);
 	}
 
 }

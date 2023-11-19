@@ -61,7 +61,7 @@ class Request
 		void 		parse_request();
 		void		create_response();
 		void		put_back_chunked();
-		bool		send_response();
+		int		send_response();
 		void		load_file();
 
 		void		handle_GET();
