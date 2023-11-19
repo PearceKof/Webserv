@@ -135,7 +135,6 @@ void Request::parse_request()
 		value_header.erase(value_header.find_last_not_of(" \r\n\t") + 1, value_header.length());
 		key_header.erase(0, key_header.find_first_not_of(" \r\n\t"));
 		_header_request[key_header] = value_header;
-		std::cerr << "\n\nICI _header_request[" << key_header << "] = [" << value_header << "]" << std::endl;
 	}
 
 	if ( _header_request.find("Content-Length") != _header_request.end() )
@@ -150,7 +149,6 @@ void Request::parse_request()
 	{
 		_request_is_chunked = ( _header_request["Transfer-Encoding"].find("chunked") != std::string::npos );
 	}
-	std::cerr << "\n\n[DEBUG]: _request_is_chunked = " << _request_is_chunked << "Transfer-Encoding = [" << _header_request["Transfer-Encoding"] << "]" << std::endl;
 
 	size_t	boundary_pos = _request.find("boundary=") + 9;
 	if ( _request.find("boundary=") != std::string::npos + 9 )
@@ -162,20 +160,14 @@ void Request::parse_request()
 
 int	Request::treat_received_data(char *buf, ssize_t nbytes)
 {
-	// std::cerr << "buf=[" << buf << "]" << std::endl;
 	if ( _body_is_unfinished )
-	{
-		std::cerr << "[DEBUG]: 0 _left_to_read=" << _left_to_read << " _request_is_chunked= " << _request_is_chunked << std::endl;
 		return !read_body(nbytes, buf);
-	}
-
 
 	std::string	tmp = (_request + (std::string)buf);
 	size_t pos_end_header = tmp.find("\r\n\r\n");
 
 	if ( pos_end_header == std::string::npos )
 	{
-		std::cerr << "[DEBUG]: 1 _left_to_read=" << _left_to_read << " _request_is_chunked= " << _request_is_chunked << std::endl;
 		for ( ssize_t i = 0 ; i < nbytes ; i++ )
 			_request.push_back(buf[i]);
 
@@ -191,7 +183,6 @@ int	Request::treat_received_data(char *buf, ssize_t nbytes)
 		_left_to_read -= _body_request.size();
 
 		_body_is_unfinished = _left_to_read > 0;
-		std::cerr << "[DEBUG]: 2 _left_to_read=" << _left_to_read << " _request_is_chunked= " << _request_is_chunked << std::endl;
 		return !_body_is_unfinished;
 	}
 }
@@ -452,18 +443,11 @@ void	Request::upload_file(std::string boundary)
 	Location active_location = _server->get_locations()[_path];
 	std::string filename = get_filename(_body_request);
 	if ( filename.empty() )
-	{
-		std::cerr << "ICICICICICICICICICICI 1" << std::endl;
 		return error(400, "Bad Request");
-	}
 	size_t	begin = _body_request.find("\r\n\r\n");
 	size_t	end = _body_request.find("\r\n--" + boundary + "--", begin);
-	if ( begin == std::string::npos || end == std::string::npos)
-	{
-		std::cerr << "begin = " << begin << " end = " << end << std::endl;
-		std::cerr << "ICICICICICICICICICICI 2" << std::endl;
+	if ( begin == std::string::npos || end == std::string::npos )
 		return error(400, "Bad Request");
-	}
 	std::string	body_trimmed = _body_request.substr(begin + 4, end - (begin + 4));
 
 	std::string path;
