@@ -26,6 +26,7 @@ void	Request::set_fd_and_server(int fd, Server *server)
 {
 	_socket = fd;
 	_server = server;
+	// _list_of_servers = servers;
 }
 
 static	bool	is_valid_path(std::map<std::string, Location> locations, std::string path)
@@ -45,7 +46,6 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 	if ( _mime.is_a_file(_path) )
 	{
-		std::cerr << "[DEBUG]: _request_a_file= is true " << std::endl;
 		_request_a_file = true;
 		begin = _path.find_last_of('.');
 		end = _path.find(' ', begin);
@@ -53,13 +53,12 @@ void	Request::set_path(std::map<std::string, Location> locations)
 	}
 	_content_type = _mime.get_content_type(extension);
 
+	std::string root;
 	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
 	{
-
 		std::cerr << "[DEBUG]: TEST" << "locations[it->first].get_cgi_path() " << locations[it->first].get_cgi_path() << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path()) << std::endl;
 		if ( locations[it->first].get_cgi_path() != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos )
 		{
-			std::string root;
 			if ( locations[it->first].get_root() != "" )
 				root = locations[it->first].get_root();
 			else if ( _server->get_root() != "" )
@@ -94,7 +93,14 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			return ;
 		}
 	}
-	// _path = DEFAULT_ROOT + _path;
+	_active_location = "/";
+	if ( locations[_active_location].get_root() != "" )
+		root = locations[_active_location].get_root();
+	else if ( _server->get_root() != "" )
+		root = _server->get_root();
+	else
+		root = DEFAULT_ROOT;
+	_path = root + _path;
 }
 
 Request::~Request()
@@ -165,6 +171,12 @@ void Request::parse_request()
 	{
 		_header_request["boundary"] = _request.substr(boundary_pos, _request.find("\r\n", boundary_pos));
 	}
+
+	if ( _header_request.find("Host") != _header_request.end() )
+	{
+		_host = _header_request["Host"];
+	}
+
 	_left_to_read = _body_size;
 }
 
@@ -320,9 +332,6 @@ void	Request::create_response()
 	}
 	else
 	{
-		// if ( _active_location == "" )
-		// 	_active_location = _path;
-
 		if ( _method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
 			handle_GET();
 		else if ( _method == "POST"  && _server->get_locations()[_active_location].get_allow_methods(POST))
@@ -330,7 +339,7 @@ void	Request::create_response()
 		else if ( _method == "DELETE" && _server->get_locations()[_active_location].get_allow_methods(DELETE) )
 			handle_DELETE();
 		else
-				error(405, "Method Not Allowed");
+			error(405, "Method Not Allowed");
 	}
 
 	generate_full_response();
@@ -542,7 +551,7 @@ int	Request::send_response()
 	_response.erase(0, nbytes);
 
 	_left_to_send -= nbytes;
-	if ( _left_to_send <= 0 )
+	if ( _left_to_send <= 0 || nbytes == 0 )
 	{
 		std::cout << "[WEBSERV]: sended full response to client [" << _socket << "] successfully" << std::endl;
 		return 1;

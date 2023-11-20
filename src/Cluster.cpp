@@ -108,9 +108,12 @@ void	Cluster::set_sockets()
 			Socket new_socket(listening_port[j].second, &_servers[i]);
 			_sockets.push_back(new_socket);
 			struct kevent ev_set;
-			EV_SET(&ev_set, new_socket.get_server_socket_fd(), EVFILT_READ, EV_ADD, 0, 0, NULL);
+			EV_SET(&ev_set, new_socket.get_server_socket_fd(), EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, NULL);
 			if ( kevent(_kq, &ev_set, 1, NULL, 0, NULL) == -1 )
-				std::cerr << "failed to add socket to kqueue" << std::endl;
+				std::cerr << "[WEBSERV]: failed to add socket to kqueue" << std::endl;
+			else
+				std::cerr << "[WEBSERV]: succeed to add socket to kqueue" << std::endl;
+			
 		}
 	}
 }
@@ -176,6 +179,8 @@ int	Cluster::read_request(int client_socket)
 	ssize_t nbytes = read(client_socket, buf, 120);
 	if ( nbytes <= 0 )
 	{
+		if ( nbytes == -1 )
+			std::cerr << "[ERROR]: client [" << client_socket << "] failed to read request" << std::endl;
 		close_connection(client_socket);
 		return 0;
 	}
@@ -198,7 +203,7 @@ void	Cluster::read_event(int client_socket)
 		// ev_set = _clients[client_socket].events;
 		EV_SET(&ev_set, client_socket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 		if ( kevent(_kq, &ev_set, 1, 0, 0, 0 ) )
-			std::cerr << "kevent failed" << std::endl;
+			std::cerr << "[WEBSERV]: kevent failed" << std::endl;
 	}
 }
 

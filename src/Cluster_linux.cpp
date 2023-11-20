@@ -177,6 +177,8 @@ int	Cluster::read_request(int client_socket)
 	// std::cerr << "[DEBUG] readed from client" << client_socket << ":[" << buf << "]" << std::endl;
 	if ( nbytes <= 0 )
 	{
+		if ( nbytes == -1 )
+			std::cerr << "[ERROR]: client [" << client_socket << "] failed to read request" << std::endl;
 		close_connection(client_socket);
 		return 0;
 	}

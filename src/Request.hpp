@@ -4,6 +4,7 @@
 
 # include "Webserv.hpp"
 # include "Mime.hpp"
+# include <vector>
 # include <string>
 # include <map>
 # include <dirent.h>
@@ -25,6 +26,7 @@ class Request
 		std::string							_method;
 		std::string							_path;
 		std::string							_version;
+		std::string							_host;
 	
 		std::string							_response;
 		std::string							_header_response;
@@ -35,6 +37,7 @@ class Request
 
 		Mime								_mime;
 		Server*								_server;
+		std::vector<Server>					_list_of_servers;
 		std::string							_active_location;
 		std::string							_cgi_path;
 	
