@@ -69,7 +69,7 @@ class Request
 		void		load_file();
 		// void		redirection(std::string redirection);
 
-		std::string	cgi();
+		void	cgi();
 
 		void		handle_GET();
 		void		handle_POST();

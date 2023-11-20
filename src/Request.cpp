@@ -231,33 +231,46 @@ void	Request::put_back_chunked()
 	_body_request = _body_response;
 }
 
-std::string	Request::cgi()
+void	Request::cgi()
 {
+	std::string query_string;
+	std::string method_env = "REQUEST_METHOD=" + _method;
+	std::cout << "ALLOWED: " << _server->get_locations()[_active_location].get_allow_methods(GET) << std::endl;
+	if(_method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
+	{
+		query_string = _path.substr(_path.find("?") + 1);
+	}
+	else if (_method == "POST" && _server->get_locations()[_active_location].get_allow_methods(POST))
+	{
+		query_string = _body_request;
+	}
+	else
+		error(405, "Method Not Allowed");
+
 	std::string bodyFromScript;
 	int	pipe_fd[2];
 
 	if(pipe(pipe_fd) == -1)
-		return("error: pip");
+		error(500, "Internal Server Error");
 	
 	pid_t pid = fork();
 	if(pid == -1)
-		return("error: fork");
-	
+		error(500, "Internal Server Error");
 	else if(pid == 0)
 	{
 		const char	*pythonExecutable = "/usr/bin/python3";
 		char	*argv[] = {(char*)pythonExecutable, (char*)_cgi_path.c_str(), nullptr};
-		std::string query_string = _path.substr(_path.find("?") + 1);
 		char *envp[] = {(char*)query_string.c_str(),
-					(char*)"REQUEST_METHOD=GET",
+					(char*)method_env.c_str(),
 					nullptr};
 		
+		std::cout << "query_script:" << query_string << std::endl;
 		close(pipe_fd[0]);
 		dup2(pipe_fd[1], STDOUT_FILENO);
 		close(pipe_fd[1]);
 		
 		if(execve(pythonExecutable, argv, envp) == -1)
-			return("error: execve");
+			error(500, "Internal Server Error");
 	}
 	else
 	{
@@ -271,15 +284,13 @@ std::string	Request::cgi()
 			char buffer[1024];
 			ssize_t n;
 			while ((n = read(pipe_fd[0], buffer, 1024)) > 0)
-				bodyFromScript.append(buffer, n);
+				_body_response.append(buffer, n);
 			close(pipe_fd[0]);
 			waitpid(-1, NULL, 0);
-			return(bodyFromScript);
 		}
 		else
-			return("error: script");
+			error(500, "Internal Server Error");
 	}
-	return("error: something went wrong");
 }
 
 bool	Request::is_valid_cgi_extension()
@@ -326,7 +337,7 @@ void	Request::create_response()
 	else if ( _cgi_path != "" )
 	{
 		if ( is_valid_cgi_extension() )
-			_body_response = cgi();
+			cgi();
 		else
 			error(415, "Unsupported Media Type");
 	}
