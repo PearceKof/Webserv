@@ -235,7 +235,6 @@ void	Request::cgi()
 {
 	std::string query_string;
 	std::string method_env = "REQUEST_METHOD=" + _method;
-	std::cout << "ALLOWED: " << _server->get_locations()[_active_location].get_allow_methods(GET) << std::endl;
 	if(_method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
 	{
 		query_string = _path.substr(_path.find("?") + 1);
@@ -263,8 +262,7 @@ void	Request::cgi()
 		char *envp[] = {(char*)query_string.c_str(),
 					(char*)method_env.c_str(),
 					nullptr};
-		
-		std::cout << "query_script:" << query_string << std::endl;
+		std::cout << "envp[1]: " << envp[0] << std::endl;
 		close(pipe_fd[0]);
 		dup2(pipe_fd[1], STDOUT_FILENO);
 		close(pipe_fd[1]);
