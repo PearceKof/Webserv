@@ -56,7 +56,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 	std::string root;
 	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
 	{
-		std::cerr << "[DEBUG]: TEST" << "locations[it->first].get_cgi_path() " << locations[it->first].get_cgi_path() << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path()) << std::endl;
+		// std::cerr << "[DEBUG]: locations[" << it->first << "].cgi_path=[" << locations[it->first].get_cgi_path() << "] && find(" << locations[it->first].get_cgi_path() << ") in [" << _path << "]" << std::endl;
 		if ( locations[it->first].get_cgi_path() != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos )
 		{
 			if ( locations[it->first].get_root() != "" )
@@ -68,6 +68,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 			_cgi_path = root + locations[it->first].get_cgi_path();
 			_active_location = it->first;
+			// std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path=" << locations[it->first].get_cgi_path() << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path()) << std::endl;
 			return ;
 		}
 		if ( (_path.find(it->first) == 0 && it->first != "/") || (_path == "/" && it->first == "/") )
@@ -80,16 +81,15 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			else
 				root = DEFAULT_ROOT;
 			
-
-			std::cerr << "[DEBUG]: _request_a_file= " << _request_a_file << " && false && locations[it->first].get_index() = [" << locations[it->first].get_index() << "]" << std::endl;
 			if ( _request_a_file == false && locations[it->first].get_index() != "")
 				_path = root + locations[it->first].get_index();
 			else
 				_path = _path.replace(_path.find(it->first), it->first.size(), root);
 			// else
 			// 	_path = root + _path;
-			std::cerr << "[DEBUG]= _path= " << _path << " it->first= " << it->first << std::endl;
+
 			_active_location = it->first;
+			// std::cerr << "[DEBUG]: It'S NOIT A CGI PATH" << "get_cgi_path=" << locations[it->first].get_cgi_path() << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path()) << std::endl;
 			return ;
 		}
 	}
@@ -245,17 +245,17 @@ void	Request::cgi()
 		query_string = _body_request;
 	}
 	else
-		error(405, "Method Not Allowed");
+		return error(405, "Method Not Allowed");
 
 	std::string bodyFromScript;
 	int	pipe_fd[2];
 
 	if(pipe(pipe_fd) == -1)
-		error(500, "Internal Server Error");
+		return error(500, "Internal Server Error");
 	
 	pid_t pid = fork();
 	if(pid == -1)
-		error(500, "Internal Server Error");
+		return error(500, "Internal Server Error");
 	else if(pid == 0)
 	{
 		const char	*pythonExecutable = "/usr/bin/python3";
@@ -270,7 +270,7 @@ void	Request::cgi()
 		close(pipe_fd[1]);
 		
 		if(execve(pythonExecutable, argv, envp) == -1)
-			error(500, "Internal Server Error");
+			return error(500, "Internal Server Error");
 	}
 	else
 	{
@@ -289,7 +289,7 @@ void	Request::cgi()
 			waitpid(-1, NULL, 0);
 		}
 		else
-			error(500, "Internal Server Error");
+			return error(500, "Internal Server Error");
 	}
 }
 
@@ -315,6 +315,7 @@ void	Request::create_response()
 {
 	set_path(_server->get_locations());
 
+	std::cerr << "\n\n[DEBUG]: path="<< _path << "----------------------------------------" << std::endl;
 	if ( _request_is_chunked )
 		put_back_chunked();
 
