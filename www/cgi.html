@@ -5,9 +5,17 @@
 			<center>
 				<h1>Webserv</h1>
 				<h2>cgi</h2>
-					<form method="GET" action="cgi/isprime.py" target="_blank">
+					<form method="GET" action="cgi/isprime.py">
 						<label for="value">Enter your input:</label>
 		  				<input type="text" name="value">
+						<input type="submit" value="Submit">
+						<input type="reset" value="Reset">
+
+					<form method="POST" action="cgi/isprime.py">
+						<label for="num1">Enter num1:</label>
+						<input type="text" name="num1">
+						<label for="num2">Enter num2:</label>
+						<input type="text" name="num2">
 						<input type="submit" value="Submit">
 						<input type="reset" value="Reset">
 				<h3 style="color:whitesmoke;">Click <a href="/" style="color:rgb(255, 3, 3);"> HERE</a> back to homepage </h3>
