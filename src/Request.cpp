@@ -43,8 +43,14 @@ int	Request::is_path_to_cgi(std::vector<std::string>& cgi_paths)
 	int index = 0;
 	for ( std::vector<std::string>::iterator it = cgi_paths.begin() ; it != cgi_paths.end() ; it++ )
 	{
+		std::cerr << "test cgi path = " << *it << " searched in:" << _path << "result is:" << _path.find(*it) << std::endl;
 		if ( _path.find(*it) != std::string::npos )
+		{
+			std::cerr << "test cgi path = " << *it << " searched in:" << _path << "result is:" << _path.find(*it) << "index returned= " << index << std::endl;
 			return index ;
+		}
+			
+		index++;
 	}
 	return -1 ;
 }
@@ -70,7 +76,8 @@ void	Request::set_path(std::map<std::string, Location> locations)
 		
 		// std::cerr << "[DEBUG]: locations[" << it->first << "].cgi_path=[" << locations[it->first].get_cgi_path() << "] && find(" << locations[it->first].get_cgi_path() << ") in [" << _path << "]" << std::endl;
 		// if ( locations[it->first].get_cgi_path(0) != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos )
-		if ( int index = is_path_to_cgi(locations[it->first].get_cgi_paths()) != -1 )
+		int index;
+		if ( (index = is_path_to_cgi(locations[it->first].get_cgi_paths())) != -1 )
 		{
 			if ( locations[it->first].get_root() != "" )
 				root = locations[it->first].get_root();
@@ -81,7 +88,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 			_cgi_path = root + locations[it->first].get_cgi_path(index);
 			_active_location = it->first;
-			// std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path=" << locations[it->first].get_cgi_path() << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path()) << std::endl;
+			std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path[" << index << "] " << locations[it->first].get_cgi_path(index) << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path(index)) << std::endl;
 			return ;
 		}
 		if ( (_path.find(it->first) == 0 && it->first != "/") || (_path == "/" && it->first == "/") )
