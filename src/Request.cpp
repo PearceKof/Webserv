@@ -176,21 +176,17 @@ void	Request::set_server()
 		hostname = _host;
 		port = "80";
 	}
-	// int port = itoa(port.c_str(), 10)
 
 	int index = 0;
 	std::vector<Server> list_of_serv = _cluster->get_servers();
-	std::cerr << "serch 1 host:" << hostname << " port:" << port  << std::endl; 
 	for ( std::vector<Server>::iterator it_serv = list_of_serv.begin() ; it_serv !=list_of_serv.end() ; it_serv++ )
 	{
-		std::cerr << "serch 2 host:" << hostname << " port:" << port  << std::endl; 
 		std::vector<std::pair<std::string, int> > list_of_host = it_serv->get_listening_port();
 		for ( std::vector<std::pair<std::string, int> >::iterator it_host = list_of_host.begin() ; it_host != list_of_host.end() ; it_host++)
 		{
-			std::cerr << "serch 3 host:" << hostname << " compared to " << it_host->first << " port:" << port << " compared to " << it_host->second << std::endl; 
+			// std::cerr << "[DEBUG]: host:" << hostname << " compared to " << it_host->first << " port:" << port << " compared to " << it_host->second << std::endl; 
 			if ( (hostname == it_host->first || hostname == it_serv->get_server_name()) && atoi(port.c_str()) == it_host->second )
 			{
-				std::cerr << "found " << hostname << " in " <<  it_host->first  << std::endl; 
 				_server = _cluster->get_server(index);
 				return ;
 			}
@@ -297,7 +293,7 @@ void	Request::put_back_chunked()
 void	Request::cgi()
 {
 	std::string query_string;
-	std::string method_env = "REQUEST_METHOD=" + _method;
+	// std::string method_env = "REQUEST_METHOD=" + _method;
 	if(_method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
 	{
 		query_string = _path.substr(_path.find("?") + 1);
@@ -322,16 +318,14 @@ void	Request::cgi()
 	{
 		const char	*pythonExecutable = "/usr/bin/python3";
 		char	*argv[] = {(char*)pythonExecutable, (char*)_cgi_path.c_str(), nullptr};
-		char *envp[] = {(char*)query_string.c_str(),
-					(char*)method_env.c_str(),
-					nullptr};
+		char *envp[] = {(char*)query_string.c_str(), nullptr};
 		std::cout << "envp[1]: " << envp[0] << std::endl;
 		close(pipe_fd[0]);
 		dup2(pipe_fd[1], STDOUT_FILENO);
 		close(pipe_fd[1]);
 		
 		if(execve(pythonExecutable, argv, envp) == -1)
-			return error(500, "Internal Server Error");
+			exit(EXIT_FAILURE);
 	}
 	else
 	{
@@ -507,11 +501,8 @@ void	Request::handle_GET()
 	_status_code = "200 OK";
 	Location location = _server->get_locations()[_active_location];
 
-	std::cerr << "[DEBUG]: HERE _path=[" << _path << "] isdir= " << is_directory(_path) << " _active location "  << _active_location << " " << location.get_auto_index() << std::endl; 
 	if ( is_directory(_path) )
 	{
-		std::cerr << "\n" << _path << " IS A DIRECTORY\n" << std::endl;
-
 		if ( location.get_auto_index() == true )
 			send_auto_index();
 		else
