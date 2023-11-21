@@ -37,7 +37,8 @@ class Request
 
 		Mime								_mime;
 		Server*								_server;
-		std::vector<Server>					_list_of_servers;
+		Cluster*							_cluster;
+		// Server								_list_of_servers;
 		std::string							_active_location;
 		std::string							_cgi_path;
 	
@@ -60,7 +61,8 @@ class Request
 	public:
 		Request();
 		~Request();
-		void		set_fd_and_server(int fd, Server *server);
+		void		set_fd_and_server(int fd, Server *server, Cluster &cluster);
+		void		set_server();
 		int			treat_received_data(char *buf, ssize_t nbytes);
 		int 		read_body(ssize_t nbytes, char *buf);
 		void 		parse_request();

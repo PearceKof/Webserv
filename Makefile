@@ -13,10 +13,10 @@ LINUX_OBJ	= $(LINUX_FILES:%.cpp=%.o)
 all: $(OBJ) $(NAME)
 
 linux : $(LINUX_OBJ)
-	$(CC)  -o $(NAME) $(LINUX_OBJ)
+	$(CC) $(FLAGS) -o $(NAME) $(LINUX_OBJ)
 
 $(NAME): $(OBJ)
-	$(CC)  -o $(NAME) $(OBJ)
+	$(CC) $(FLAGS) -o $(NAME) $(OBJ)
 
 %.o: %.c
 	$(CC) $(FLAGS) -c $< -o $@

@@ -19,14 +19,15 @@ Request::Request()
 	_max_body_size_reached = false;
 	_content_lenght = "0";
 	_active_location = "";
+	_server = NULL;
 
 }
 
-void	Request::set_fd_and_server(int fd, Server *server)
+void	Request::set_fd_and_server(int fd, Server *server, Cluster &cluster)
 {
 	_socket = fd;
 	_server = server;
-	// _list_of_servers = servers;
+	_cluster = &cluster;
 }
 
 static	bool	is_valid_path(std::map<std::string, Location> locations, std::string path)
@@ -43,10 +44,8 @@ int	Request::is_path_to_cgi(std::vector<std::string>& cgi_paths)
 	int index = 0;
 	for ( std::vector<std::string>::iterator it = cgi_paths.begin() ; it != cgi_paths.end() ; it++ )
 	{
-		std::cerr << "test cgi path = " << *it << " searched in:" << _path << "result is:" << _path.find(*it) << std::endl;
 		if ( _path.find(*it) != std::string::npos )
 		{
-			std::cerr << "test cgi path = " << *it << " searched in:" << _path << "result is:" << _path.find(*it) << "index returned= " << index << std::endl;
 			return index ;
 		}
 			
@@ -158,7 +157,49 @@ int Request::read_body( ssize_t nbytes, char *buf)
 
 }
 
-void Request::parse_request()
+
+void	Request::set_server()
+{
+	if ( _host == "" )
+		return error(400, "Bad Request");
+	std::string	hostname;
+	std::string port;
+	size_t col_pos = _host.find(':');
+	if ( col_pos != std::string::npos )
+	{
+		hostname = _host.substr(0, _host.size() - (_host.size() - col_pos));
+		col_pos++;
+		port = _host.substr(col_pos, _host.size() - col_pos);
+	}
+	else
+	{
+		hostname = _host;
+		port = "80";
+	}
+	// int port = itoa(port.c_str(), 10)
+
+	int index = 0;
+	std::vector<Server> list_of_serv = _cluster->get_servers();
+	std::cerr << "serch 1 host:" << hostname << " port:" << port  << std::endl; 
+	for ( std::vector<Server>::iterator it_serv = list_of_serv.begin() ; it_serv !=list_of_serv.end() ; it_serv++ )
+	{
+		std::cerr << "serch 2 host:" << hostname << " port:" << port  << std::endl; 
+		std::vector<std::pair<std::string, int> > list_of_host = it_serv->get_listening_port();
+		for ( std::vector<std::pair<std::string, int> >::iterator it_host = list_of_host.begin() ; it_host != list_of_host.end() ; it_host++)
+		{
+			std::cerr << "serch 3 host:" << hostname << " compared to " << it_host->first << " port:" << port << " compared to " << it_host->second << std::endl; 
+			if ( (hostname == it_host->first || hostname == it_serv->get_server_name()) && atoi(port.c_str()) == it_host->second )
+			{
+				std::cerr << "found " << hostname << " in " <<  it_host->first  << std::endl; 
+				_server = _cluster->get_server(index);
+				return ;
+			}
+		}
+		index++;
+	}
+}
+
+void	Request::parse_request()
 {
 	std::stringstream ss(_request);
 	std::string	key_header, value_header;
@@ -196,6 +237,8 @@ void Request::parse_request()
 	{
 		_host = _header_request["Host"];
 	}
+
+	set_server();
 
 	_left_to_read = _body_size;
 }
@@ -331,9 +374,12 @@ bool	Request::is_valid_cgi_extension()
 
 void	Request::create_response()
 {
+	if ( _host == "")
+	{
+		return error(400, "Bad Request");
+	}
 	set_path(_server->get_locations());
 
-	std::cerr << "\n\n[DEBUG]: path="<< _path << "----------------------------------------" << std::endl;
 	if ( _request_is_chunked )
 		put_back_chunked();
 
@@ -594,17 +640,20 @@ void	Request::error(int status_code, std::string status_message)
 {
 	std::string	file;
 
-	file = _server->get_root() + _server->get_error_page(status_code);
+	if ( _server )
+	{
+		file = _server->get_root() + _server->get_error_page(status_code);
+		std::ifstream	content_stream(file.c_str());
+		std::stringstream stream;
 
-	std::ifstream	content_stream(file.c_str());
-	std::stringstream stream;
+		stream << content_stream.rdbuf();
+		_body_response = stream.str();
 
-	stream << content_stream.rdbuf();
-	_body_response = stream.str();
-
-	_status_code = std::to_string(status_code);
+		_status_code = std::to_string(status_code);
+	}
 	if ( status_message != "" )
 		_status_code += " " + status_message;
+
 
 	if ( _body_response == "")
 		_body_response = "<h1>ERROR: " + _status_code + "</h1>";

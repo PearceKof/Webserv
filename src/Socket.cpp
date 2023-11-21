@@ -24,10 +24,7 @@ Socket::Socket(int port, Server *server) : _server_socket_fd(socket(AF_INET, SOC
 	_server_address.sin_addr.s_addr = htonl(INADDR_ANY);
 	_server_address.sin_port = htons(port);
 
-	if ( bind(_server_socket_fd, (struct sockaddr *)&_server_address, sizeof(_server_address)) == -1 )
-	{
-		throw std::runtime_error("bind function failed");
-	}
+	bind(_server_socket_fd, (struct sockaddr *)&_server_address, sizeof(_server_address));
 
 	if ( listen(_server_socket_fd, 1000) < 0 )
 	{

@@ -138,7 +138,7 @@ void	Cluster::accept_new_connection(int new_client_fd, Socket *socket)
 		if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
 			throw std::runtime_error("fcntl failed");
 
-		_clients[fd].set_fd_and_server(fd, socket->get_server());
+		_clients[fd].set_fd_and_server(fd, socket->get_server(), *this);
 	
 		ev_set.events = EPOLLIN;
 		ev_set.data.fd = fd;
@@ -174,7 +174,7 @@ int	Cluster::read_request(int client_socket)
 	char buf[120];
 	bzero(buf, 120);
 	ssize_t nbytes = read(client_socket, buf, 120);
-	// std::cerr << "[DEBUG] readed from client" << client_socket << ":[" << buf << "]" << std::endl;
+	std::cerr << "[DEBUG] readed from client" << client_socket << ":[" << buf << "]" << std::endl;
 	if ( nbytes <= 0 )
 	{
 		if ( nbytes == -1 )

@@ -46,6 +46,8 @@ class Cluster
 		std::vector<Socket> get_sockets() { return _sockets ; };
 		// std::vector<int>	&get_clients_sockets() { return _clients_sockets ; };
 		// int					get_client_socket(int index) { return _clients_sockets[index] ; };
+		Server				*get_server(int index) { return &_servers[index] ; };
+		std::vector<Server> get_servers() { return _servers ; };
 };
 
 #endif
