@@ -325,7 +325,6 @@ void	Request::cgi()
 		char *envp[] = {(char*)query_string.c_str(),
 					(char*)method_env.c_str(),
 					nullptr};
-		std::cout << "envp[1]: " << envp[0] << std::endl;
 		close(pipe_fd[0]);
 		dup2(pipe_fd[1], STDOUT_FILENO);
 		close(pipe_fd[1]);
