@@ -8,6 +8,7 @@ Location::Location(std::string location_config) : _auto_index(false)
 	set_attributs(location_config);
 	set_error_pages(location_config);
 	set_allow_methods(location_config);
+	set_cgi_path(location_config);
 	set_cgi_extension(location_config);
 }
 
@@ -20,7 +21,6 @@ void	Location::set_attributs(std::string& location_config)
 	_index = trim_config("\"index\"", location_config);
 	_redirect = trim_config("\"redirect\"", location_config);
 	_upload_path = trim_config("\"upload_path\"", location_config);
-	_cgi_path = trim_config("\"cgi_path\"", location_config);
 	_client_max_body_size = trim_config("\"client_max_body_size\"", location_config);
 
 	if ( !(trim_config("\"autoindex\"", location_config).compare("on")) )
@@ -62,7 +62,7 @@ void	Location::set_allow_methods(std::string location_config)
 	std::string	methods;
 
 	begin = location_config.find("\"allow_methods\"") + 16;
-	if ( begin != std::string::npos + 14 )
+	if ( begin != std::string::npos + 16 )
 	{
 		end = location_config.find("\n");
 		methods = location_config.substr(begin, end - begin);
@@ -76,6 +76,30 @@ void	Location::set_allow_methods(std::string location_config)
 	if ( methods.find("DELETE") != std::string::npos )
 		_allow_methods[DELETE] = true;
 }
+
+void	Location::set_cgi_path(std::string location_config)
+{
+	size_t		begin;
+	size_t		end;
+	std::string	tmp;
+
+	begin = location_config.find("\"cgi_path\"") + 11;
+	if ( begin == std::string::npos + 11 )
+		return ;
+	end = location_config.find('\n', begin);
+	tmp = location_config.substr(begin, end - begin);
+	begin = 0;
+	end = tmp.find(' ', begin);
+	std::cerr << "___tmp =" << tmp << "=____" << std::endl;
+	while ( end != std::string::npos )
+	{
+		_cgi_path.push_back(tmp.substr(begin, end - begin));
+		begin = end + 1;
+		end = tmp.find(' ', begin);
+	}
+	_cgi_path.push_back(tmp.substr(begin, end - begin));
+}
+
 
 void	Location::set_cgi_extension(std::string location_config)
 {

@@ -318,7 +318,14 @@ void	Cluster::print_all()
 			std::cout << "index       : [" << it->second.get_index() << "]" << std::endl;
 			std::cout << "redirect    : [" << it->second.get_redirect() << "]" << std::endl;
 			std::cout << "upload_path : [" << it->second.get_upload_path() << "]" << std::endl;
-			std::cout << "cgi_path    : [" << it->second.get_cgi_path() << "]" << std::endl;
+			std::cout << "cgi_path    : [";
+			for ( size_t j = 0 ; j < it->second.get_cgi_path_size() ; j++ )
+			{
+				std::cout << it->second.get_cgi_path(j);
+				if ( j != it->second.get_cgi_path_size() - 1 )
+					std::cout << " ";
+			}
+			std::cout << "]" << std::endl;
 			std::cout << "cgi_ext     : [";
 			for ( size_t j = 0 ; j < it->second.get_cgi_extension_size() ; j++ )
 			{

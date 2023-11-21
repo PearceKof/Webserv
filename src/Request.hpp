@@ -55,6 +55,7 @@ class Request
 		void		generate_full_response();
 		void		send_auto_index();
 		void		redirection(std::string redirection);
+		int		is_path_to_cgi(std::vector<std::string>& cgi_paths);
 		bool		is_valid_cgi_extension();
 	public:
 		Request();

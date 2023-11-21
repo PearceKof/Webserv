@@ -12,21 +12,22 @@ class Location
 {
 	private:
 		std::map<int, std::string>	_error_pages;
-		std::string	_root;
-		std::string	_server_name;
-		std::string	_index;
-		std::string	_redirect;
-		std::string	_upload_path;
-		std::string	_cgi_path;
-		std::vector<std::string>		_cgi_extension;
-		std::string	_client_max_body_size;
-		bool	_allow_methods[3];
-		bool	_auto_index;
+		std::string					_root;
+		std::string					_server_name;
+		std::string					_index;
+		std::string					_redirect;
+		std::string					_upload_path;
+		std::vector<std::string>	_cgi_path;
+		std::vector<std::string>	_cgi_extension;
+		std::string					_client_max_body_size;
+		bool						_allow_methods[3];
+		bool						_auto_index;
 		// bool	_upload;
 
 		void	set_attributs(std::string& location_config);
 		void	set_error_pages(std::string location_config);
 		void	set_allow_methods(std::string location_config);
+		void	set_cgi_path(std::string location_config);
 		void	set_cgi_extension(std::string location_config);
 
 	public:
@@ -39,7 +40,9 @@ class Location
 		std::string	get_index() { return _index ; };
 		std::string	get_redirect() { return _redirect ; };
 		std::string	get_upload_path() { return _upload_path ; };
-		std::string	get_cgi_path() { return _cgi_path ; };
+		std::string	get_cgi_path(int index) { return _cgi_path[index] ; };
+		size_t		get_cgi_path_size() { return _cgi_path.size(); };
+		std::vector<std::string>&	get_cgi_paths() { return _cgi_path ; };
 		std::string	get_cgi_extension(int index) { return _cgi_extension[index] ; };
 		size_t		get_cgi_extension_size() { return _cgi_extension.size(); };
 		bool		get_allow_methods(int index) { return _allow_methods[index] ; };

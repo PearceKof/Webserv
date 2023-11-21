@@ -38,6 +38,17 @@ static	bool	is_valid_path(std::map<std::string, Location> locations, std::string
 	return false ;
 }
 
+int	Request::is_path_to_cgi(std::vector<std::string>& cgi_paths)
+{
+	int index = 0;
+	for ( std::vector<std::string>::iterator it = cgi_paths.begin() ; it != cgi_paths.end() ; it++ )
+	{
+		if ( _path.find(*it) != std::string::npos )
+			return index ;
+	}
+	return -1 ;
+}
+
 void	Request::set_path(std::map<std::string, Location> locations)
 {
 	size_t begin;
@@ -56,8 +67,10 @@ void	Request::set_path(std::map<std::string, Location> locations)
 	std::string root;
 	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
 	{
+		
 		// std::cerr << "[DEBUG]: locations[" << it->first << "].cgi_path=[" << locations[it->first].get_cgi_path() << "] && find(" << locations[it->first].get_cgi_path() << ") in [" << _path << "]" << std::endl;
-		if ( locations[it->first].get_cgi_path() != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos )
+		// if ( locations[it->first].get_cgi_path(0) != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos )
+		if ( int index = is_path_to_cgi(locations[it->first].get_cgi_paths()) != -1 )
 		{
 			if ( locations[it->first].get_root() != "" )
 				root = locations[it->first].get_root();
@@ -66,7 +79,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			else
 				root = DEFAULT_ROOT;
 
-			_cgi_path = root + locations[it->first].get_cgi_path();
+			_cgi_path = root + locations[it->first].get_cgi_path(index);
 			_active_location = it->first;
 			// std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path=" << locations[it->first].get_cgi_path() << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path()) << std::endl;
 			return ;
