@@ -139,7 +139,7 @@ void	Cluster::accept_new_connection(int new_client_fd, Socket *socket)
 		if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
 			throw std::runtime_error("fcntl function failed");
 
-		_clients[fd].set_fd_and_server(fd, socket->get_server());
+		_clients[fd].set_fd_and_server(fd, socket->get_server(), *this);
 
 		ev_set.ident = fd;
 		EV_SET(&ev_set, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
@@ -324,7 +324,6 @@ void	Cluster::print_all()
 			std::cout << "index       : [" << it->second.get_index() << "]" << std::endl;
 			std::cout << "redirect    : [" << it->second.get_redirect() << "]" << std::endl;
 			std::cout << "upload_path : [" << it->second.get_upload_path() << "]" << std::endl;
-			std::cout << "cgi_path    : [" << it->second.get_cgi_path() << "]" << std::endl;
 
 			std::cout << "methods     : [";
 			if (it->second.get_allow_methods(GET))
