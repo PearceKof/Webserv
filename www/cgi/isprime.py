@@ -27,7 +27,16 @@ if method == "GET":
 	else:
 		r = "Veuillez soumettre un formulaire avec une valeur."
 elif method == "POST":
-	r = "TEST"
+	data = os.environ["num1"]
+	data_splited = data.split("&")
+	try:
+		num1 = float(data_splited[0])
+		num2 = float(data_splited[1].split("=")[1])
+		r = f"<output>{num1} + {num2} = {num1 + num2} :)</output>"
+	except ValueError:
+		r = "Veuillez entrer un formulaire valide, c'est à dire avec deux nombres."
+	
+	#r = os.environ
 
 
 result = f"""
