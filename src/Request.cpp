@@ -61,7 +61,7 @@ std::string decode_url(std::string coded_url)
 	decoded_url.fill(0);
 	for ( size_t i = 0 ; coded_url[i] ; i++ )
 	{
-		if ( coded_url[i] == '%' && (i + 2) > coded_url.size() )
+		if ( coded_url[i] == '%' && (i + 2) < coded_url.size() )
 		{
 			int value_hex;
 			std::stringstream str_value_hex(coded_url.substr(i + 1, 2));
@@ -171,7 +171,6 @@ int Request::read_body( ssize_t nbytes, char *buf)
 	if ( _left_to_read && _request_is_chunked == false )
 	{
 		_left_to_read -= nbytes;
-		std::cerr << "buf=[" << buf << "] left_to_read: " << _left_to_read << "nbytes= " << nbytes << std::endl;
 		return _left_to_read > 0 ;
 	}
 	else if ( _request_is_chunked )
