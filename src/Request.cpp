@@ -158,6 +158,7 @@ int Request::read_body( ssize_t nbytes, char *buf)
 	{
 		return 0;
 	}
+	// std::cerr << "[DEBUG]: max body size: " <<  _server->get_client_max_body_size() << " current bodysize: " << (_body_request.size() + nbytes) << std::endl;
 	if ( _server->get_client_max_body_size() != 0 && _server->get_client_max_body_size() < (_body_request.size() + nbytes) )
 	{
 		_max_body_size_reached = true;
@@ -401,7 +402,7 @@ void	Request::create_response()
 	{
 		error(400, "Bad Request");
 	}
-	else if ( _max_body_size_reached )
+	else if ( _max_body_size_reached || _body_request.size())
 	{
 		error(413, "Content Too Large");
 	}
@@ -581,6 +582,10 @@ void	Request::handle_POST()
 	else if ( _header_request["Content-Type"].find("application/x-www-form-urlencoded") != std::string::npos )
 	{
 		_body_response = "application/x-www-form-urlencoded";
+	}
+	else if ( _header_request["Content-Type"].find("plain/text") != std::string::npos )
+	{
+
 	}
 	else
 		error(501, "Not Implemented");
