@@ -271,19 +271,7 @@ void	Cluster::print_all()
 		std::cout << "Server      : [" << i + 1 << "]" << std::endl;
 		std::cout << "root        : [" << _servers[i].get_root() << "]" << std::endl;
 		std::cout << "server name : [" << _servers[i].get_server_name() << "]" << std::endl;
-		std::cout << "index       : [" << _servers[i].get_index() << "]" << std::endl;
-		std::cout << "redirect    : [" << _servers[i].get_redirect() << "]" << std::endl;
-		std::cout << "upload_path : [" << _servers[i].get_upload_path() << "]" << std::endl;
-		std::cout << "cgi_path    : [" << _servers[i].get_cgi_path() << "]" << std::endl;
-	
-		std::cout << "cgi_ext     : [";
-		for ( size_t j = 0 ; j < _servers[i].get_cgi_extension_size() ; j++ )
-		{
-			std::cout << _servers[i].get_cgi_extension(j);
-			if ( j != _servers[i].get_cgi_extension_size() - 1 )
-				std::cout << "|";
-		}
-		std::cout << "]" << std::endl;
+		// std::cout << "index       : [" << _servers[i].get_index() << "]" << std::endl;
 	
 		std::cout << "listen port : [";
 		std::vector<std::pair<std::string, int> >		listening_port = _servers[i].get_listening_port();
@@ -293,22 +281,6 @@ void	Cluster::print_all()
 			if ( it + 1 != listening_port.end() )
 				std::cout << " ";
 		}
-		std::cout << "]" << std::endl;
-
-		std::cout << "methods     : [";
-		if (_servers[i].get_allow_methods(GET))
-			std::cout << "[GET]";
-		if (_servers[i].get_allow_methods(POST))
-			std::cout << "[POST]";
-		if (_servers[i].get_allow_methods(DELETE))
-			std::cout << "[DELETE]";
-		std::cout << "]" << std::endl;
-	
-		std::cout << "auto index  : [";
-		if (_servers[i].get_auto_index())
-			std::cout << "yes";
-		else
-			std::cout << "no";
 		std::cout << "]" << std::endl;
 	
 		std::cout << "body size   : [" << _servers[i].get_client_max_body_size() << "]" << std::endl;
@@ -320,7 +292,6 @@ void	Cluster::print_all()
 			std::cout << "------------------------------------" << std::endl;
 			std::cout << "locations   : " << j << std::endl;
 			std::cout << "root        : [" << it->second.get_root() << "]" << std::endl;
-			std::cout << "server name : [" << it->second.get_server_name() << "]" << std::endl;
 			std::cout << "index       : [" << it->second.get_index() << "]" << std::endl;
 			std::cout << "redirect    : [" << it->second.get_redirect() << "]" << std::endl;
 			std::cout << "upload_path : [" << it->second.get_upload_path() << "]" << std::endl;

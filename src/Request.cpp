@@ -54,12 +54,38 @@ int	Request::is_path_to_cgi(std::vector<std::string>& cgi_paths)
 	return -1 ;
 }
 
+std::string decode_url(std::string coded_url)
+{
+	std::stringstream decoded_url;
+	decoded_url << std::hex;
+	decoded_url.fill(0);
+	for ( size_t i = 0 ; coded_url[i] ; i++ )
+	{
+		if ( coded_url[i] == '%' && (i + 2) > coded_url.size() )
+		{
+			int value_hex;
+			std::stringstream str_value_hex(coded_url.substr(i + 1, 2));
+			str_value_hex >> std::hex >> value_hex;
+			decoded_url << static_cast<unsigned char>(value_hex);
+			i += 2;
+		}
+		else if (coded_url[i] == '+')
+			decoded_url << ' ';
+		else
+			decoded_url << coded_url[i];
+	}
+	return decoded_url.str();
+}
+
 void	Request::set_path(std::map<std::string, Location> locations)
 {
 	size_t begin;
 	size_t end;
 	std::string extension = "default";
 
+	std::cerr << "path before [" << _path << "]" << std::endl;
+	_path = decode_url(_path);
+	std::cerr << "path after [" << _path << "]" << std::endl;
 	if ( _mime.is_a_file(_path) )
 	{
 		_request_a_file = true;
@@ -100,7 +126,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			else
 				root = DEFAULT_ROOT;
 			
-			if ( _request_a_file == false && locations[it->first].get_index() != "")
+			if ( _method != "DELETE" && locations[it->first].get_index() != "")
 				_path = root + locations[it->first].get_index();
 			else
 				_path = _path.replace(_path.find(it->first), it->first.size(), root);
@@ -293,15 +319,10 @@ void	Request::put_back_chunked()
 void	Request::cgi()
 {
 	std::string query_string;
-	// std::string method_env = "REQUEST_METHOD=" + _method;
 	if(_method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
-	{
 		query_string = _path.substr(_path.find("?") + 1);
-	}
 	else if (_method == "POST" && _server->get_locations()[_active_location].get_allow_methods(POST))
-	{
 		query_string = _body_request;
-	}
 	else
 		return error(405, "Method Not Allowed");
 
@@ -383,7 +404,7 @@ void	Request::create_response()
 	}
 	else if ( _max_body_size_reached )
 	{
-		error(413, "Unauthorized");
+		error(413, "Content Too Large");
 	}
 	else if ( _version != "HTTP/1.1")
 	{
@@ -405,7 +426,12 @@ void	Request::create_response()
 		if ( _method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
 			handle_GET();
 		else if ( _method == "POST"  && _server->get_locations()[_active_location].get_allow_methods(POST))
-			handle_POST();
+		{
+			if ( _server->get_locations()[_active_location].get_upload() == true )
+				handle_POST();
+			else
+				error(403, "Forbidden");
+		}
 		else if ( _method == "DELETE" && _server->get_locations()[_active_location].get_allow_methods(DELETE) )
 			handle_DELETE();
 		else
@@ -415,44 +441,20 @@ void	Request::create_response()
 	generate_full_response();
 }
 
-void	Request::generate_full_response()
-{
-	_header_response += "Date: " + daytime() + "\r\n";
-	_header_response += "Server: " + _server->get_server_name() + "\r\n";
-	if ( _content_type != "")
-		_header_response += "Content-Type: " + _content_type + "\r\n";
-	_header_response += "Content-Length: " + std::to_string(_body_response.size()) + "\r\n";
-
-	_response = "HTTP/1.1 " + _status_code + "\r\n";
-	_response += _header_response;
-	_response += "\r\n";
-
-	_response += _body_response;
-
-	_left_to_send = _response.size();
-	std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
-}
 
 void	Request::redirection(std::string redirection)
 {
 	_status_code = "301 Moved Permanently";
 	_header_response += "Location: " + redirection + "\r\n";
-	_header_response += "Content-Length: 0\r\n\r\n";
 }
 
 void	Request::send_auto_index()
 {
 	_status_code = "200 OK";
-	_header_response += "Date: " + daytime() + "\r\n";
-	_header_response += "Server: " + _server->get_server_name() + "\r\n";
-	_header_response += "Content-Type: text/html\r\n";
 
 	DIR *dir = opendir(_path.c_str());
 	if ( dir == NULL )
-	{
-		error(403, "Forbidden");
-		return ;
-	}
+		return error(403, "Forbidden");
 
 	_body_response = "<html><head><title>Directory Listing</title></head><body><h1>Directory Listing</h1><table>";
 	_body_response += "<tr><td><a href=\"../\">../</a></td><td>-</td></tr>";
@@ -517,10 +519,8 @@ void	Request::handle_GET()
 				return error(404, "Not Found");
 		}
 	}
-	else if ( is_existing_file( _path) )
-	{
+	else if ( is_existing_file(_path) )
 		load_file();
-	}
 	else
 		return error(404, "Not Found");
 }
@@ -552,8 +552,6 @@ void	Request::upload_file(std::string boundary)
 	std::string path;
 	if ( active_location.get_upload_path() != "" )
 		path = active_location.get_upload_path() + "/" + filename;
-	else if ( _server->get_upload_path() != "" )
-		path = _server->get_upload_path() + "/" + filename;
 	else
 		path = DEFAULT_UPLOAD_PATH"/" + filename;
 
@@ -569,7 +567,7 @@ void	Request::upload_file(std::string boundary)
 	_body_response = body_trimmed;
 	_content_type = _mime.get_content_type(filename);
 	_content_lenght = std::to_string(_body_response.size());
-	_header_response += "Location: " + path;
+	_header_response += "Location: " + path + "\r\n";
 }
 
 void	Request::handle_POST()
@@ -583,8 +581,7 @@ void	Request::handle_POST()
 	}
 	else if ( _header_request["Content-Type"].find("application/x-www-form-urlencoded") != std::string::npos )
 	{
-		std::cerr << "\n\n[DEBUG] application/x-www-form-urlencoded\n\n" << std::endl;
-		_body_response = "response to application/x-www-form-urlencoded";
+		_body_response = "application/x-www-form-urlencoded";
 	}
 	else
 		error(501, "Not Implemented");
@@ -593,16 +590,36 @@ void	Request::handle_POST()
 
 void	Request::handle_DELETE()
 {
-	_status_code = "200 OK";
+	_status_code = "204 No Content";
 	
-	// _path = "./" + _path;
-	std::cerr << "[DEBUG]: DELETE _path= " << _path << " is existing file: " << is_existing_file(_path) << std::endl;
+	std::cerr << "[DEBUG]: DELETE _path= " << _path << " is existing file: " << is_existing_file(_path) << " active_location=" << _active_location  << std::endl;
 	if ( is_existing_file(_path) == false )
 	{
 		return error(404, "Not Found");
 	}
-	if ( std::remove(_path.c_str()) )
+	if ( _path == _active_location || std::remove(_path.c_str()) )
 		return error(403, "Forbidden");
+}
+
+void	Request::generate_full_response()
+{
+	_header_response += "Date: " + daytime() + "\r\n";
+	if ( _host != "")
+		_header_response += "Host: " + _host + "\r\n";
+	if ( _server->get_server_name() != "")
+		_header_response += "Server: " + _server->get_server_name() + "\r\n";
+	if ( _content_type != "")
+		_header_response += "Content-Type: " + _content_type + "\r\n";
+	_header_response += "Content-Length: " + std::to_string(_body_response.size()) + "\r\n";
+
+	_response = "HTTP/1.1 " + _status_code + "\r\n";
+	_response += _header_response;
+	_response += "\r\n";
+
+	_response += _body_response;
+
+	_left_to_send = _response.size();
+	std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
 }
 
 int	Request::send_response()

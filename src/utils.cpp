@@ -5,7 +5,6 @@ bool	is_directory( std::string path )
 {
 	struct stat st;
 
-	// path = "." + path;
 	if ( stat(path.c_str(), &st) )
 		return false ;
 
@@ -48,6 +47,5 @@ std::string	daytime()
 	time(&timer);
 	timeinfo = localtime(&timer);
 	strftime(buffer, 80, "%a %b %d %H:%M:%S %Y", timeinfo);
-	// std::string	time(buffer);
 	return std::string(buffer) ;
 }

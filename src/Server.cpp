@@ -1,14 +1,12 @@
 
 #include "Server.hpp"
 
-Server::Server(std::string server_config) : _auto_index(false), _client_max_body_size(1000000)
+Server::Server(std::string server_config) : _client_max_body_size(1000000)
 {
 	set_locations(server_config);
 	set_error_pages(server_config);
 	set_attributs(server_config);
-	set_allow_methods(server_config);
 	set_listen(server_config);
-	set_cgi_extension(server_config);
 }
 
 Server::~Server()
@@ -38,7 +36,6 @@ void	Server::set_error_pages(std::string server_config)
 			end = tmp.find('\n', begin);
 			std::istringstream(error_path) >> error_index;
 			_error_pages[error_index] = tmp.substr(begin, end - begin);
-			// std::cerr << "DEBUG 1 begin = " << begin << " end = " << end << "\n _error_pages= [" << _error_pages[error_index] << "]" << std::endl;
 		}
 		begin = begin = server_config.find("\"error_page\"");
 	}
@@ -83,39 +80,10 @@ void	Server::set_attributs(std::string& server_config)
 
 	_server_name = trim_config("\"server_name\"", server_config);
 	_root = trim_config("\"root\"", server_config);
-	_index = trim_config("\"index\"", server_config);
-	_redirect = trim_config("\"redirect\"", server_config);
-	_upload_path = trim_config("\"upload_path\"", server_config);
-	_cgi_path = trim_config("\"cgi_path\"", server_config);
-	_upload_path = trim_config("\"upload_path\"", server_config);
-
-	_client_max_body_size =  set_client_max_body_size(trim_config("\"client_max_body_size\"", server_config));
+	std::string max_body_size = trim_config("\"client_max_body_size\"", server_config);
+	if ( max_body_size != "" )
+		_client_max_body_size =  set_client_max_body_size(max_body_size);
 	
-	if ( !(trim_config("\"autoindex\"", server_config).compare("on")) )
-		_auto_index = true;
-	
-}
-
-void	Server::set_allow_methods(std::string location_config)
-{
-	size_t		begin;
-	size_t		end;
-	std::string	methods;
-
-	begin = location_config.find("\"allow_methods\"") + 16;
-	if ( begin != std::string::npos + 14 )
-	{
-		end = location_config.find("\n");
-		methods = location_config.substr(begin, end - begin);
-	}
-	for ( int i = 0 ; i < 3 ; i++ )
-		_allow_methods[i] = false;
-	if ( methods.find("GET") != std::string::npos )
-		_allow_methods[GET] = true;
-	if ( methods.find("POST") != std::string::npos )
-		_allow_methods[POST] = true;
-	if ( methods.find("DELETE") != std::string::npos )
-		_allow_methods[DELETE] = true;
 }
 
 static bool	is_valid_host(std::string host)
@@ -189,27 +157,27 @@ void	Server::set_listen(std::string location_config)
 	}
 }
 
-void	Server::set_cgi_extension(std::string server_config)
-{
-	size_t		begin;
-	size_t		end;
-	std::string	tmp;
+// void	Server::set_cgi_extension(std::string server_config)
+// {
+// 	size_t		begin;
+// 	size_t		end;
+// 	std::string	tmp;
 
-	begin = server_config.find("\"cgi_extension\"") + 16;
-	if ( begin == std::string::npos + 16 )
-		return ;
-	end = server_config.find('\n', begin);
-	tmp = server_config.substr(begin, end - begin);
-	begin = 0;
-	end = tmp.find(' ', begin);
-	while ( end != std::string::npos ) //à checker
-	{
-		_cgi_extension.push_back(tmp.substr(begin, end - begin));
-		begin = end + 1;
-		end = tmp.find(' ', begin);
-	}
-	_cgi_extension.push_back(tmp.substr(begin, end - begin));
-}
+// 	begin = server_config.find("\"cgi_extension\"") + 16;
+// 	if ( begin == std::string::npos + 16 )
+// 		return ;
+// 	end = server_config.find('\n', begin);
+// 	tmp = server_config.substr(begin, end - begin);
+// 	begin = 0;
+// 	end = tmp.find(' ', begin);
+// 	while ( end != std::string::npos ) //à checker
+// 	{
+// 		_cgi_extension.push_back(tmp.substr(begin, end - begin));
+// 		begin = end + 1;
+// 		end = tmp.find(' ', begin);
+// 	}
+// 	_cgi_extension.push_back(tmp.substr(begin, end - begin));
+// }
 
 bool	Server::is_valid_server()
 {

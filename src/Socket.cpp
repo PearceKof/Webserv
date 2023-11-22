@@ -24,7 +24,8 @@ Socket::Socket(int port, Server *server) : _server_socket_fd(socket(AF_INET, SOC
 	_server_address.sin_addr.s_addr = htonl(INADDR_ANY);
 	_server_address.sin_port = htons(port);
 
-	bind(_server_socket_fd, (struct sockaddr *)&_server_address, sizeof(_server_address));
+	if ( bind(_server_socket_fd, (struct sockaddr *)&_server_address, sizeof(_server_address)) == -1 )
+		perror("bind:");
 
 	if ( listen(_server_socket_fd, 1000) < 0 )
 	{

@@ -3,17 +3,16 @@
 	<body style="background-color:black;">
 		<FONT COLOR="#FF005A ">
 			<center>
-				<br>
 				<h1>Webserv</h1>
-				<br>
 				<h2>Delete</h2>
-				<br>
-				<form>
+
+				<form target="_blank">
 					<label for="file_to_delete">File name:</label>
-					<input type="filz" id="file_to_delete" name="file_to_delete">
-					<input type="submit" value="Submit" id="submit_icon" >
+					<input type="text" id="file_to_delete" name="file_to_delete">
+					<input type="submit" value="Submit" id="submit_icon">
 				</form>
-				<br>
+					
+				
 				<h3 style="color:whitesmoke;">Click <a href="/" style="color:red;"> HERE</a> back to homepage </h3>
 			</center>
 		</FONT>
@@ -28,10 +27,9 @@
 			event.preventDefault();
 			let xhr = new XMLHttpRequest();
 			let file = document.getElementsByName('file_to_delete')[0].value;
-			let file_url = "/delete" + file;
+			let file_url = "/delete/" + file;
 			xhr.open('DELETE', `${file_url}`);
 			xhr.send();
-			xhr.onload = function() { window.location.href = "http://localhost/delete"; }
 		}
 	</script>
 </html>
