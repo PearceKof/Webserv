@@ -411,7 +411,7 @@ void	Request::create_response()
 	{
 		error(400, "Bad Request");
 	}
-	else if ( _max_body_size_reached || _body_request.size())
+	else if ( _max_body_size_reached || _body_request.size() > _server->get_client_max_body_size())
 	{
 		error(413, "Content Too Large");
 	}
