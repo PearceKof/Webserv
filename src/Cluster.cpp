@@ -192,7 +192,7 @@ void	Cluster::read_event(int client_socket)
 {
 	struct kevent ev_set;
 
-	if ( read_request(client_socket) )
+	if ( read_request(client_socket) && _clients[client_socket].get_response() == "" )
 	{
 		std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << "\nBody=\n[" << _clients[client_socket].get_body_request() << "]" << std::endl;
 		
@@ -217,7 +217,7 @@ void	Cluster::write_event(int client_socket)
 
 	if ( _clients[client_socket].send_response() )
 	{
-		std::cerr << "[WEBSERV]: client [" << client_socket << "] Connection =[" << _clients[client_socket].get_header_request("Connection")  << "]" << std::endl;
+		_clients[client_socket].get_response() = "";
 		_clients[client_socket].get_request() = "";
 		_clients[client_socket].get_body_request() = "";
 

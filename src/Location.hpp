@@ -13,7 +13,6 @@ class Location
 	private:
 		std::map<int, std::string>	_error_pages;
 		std::string					_root;
-		// std::string					_server_name;
 		std::string					_index;
 		std::string					_redirect;
 		std::string					_upload_path;
@@ -22,6 +21,7 @@ class Location
 		bool						_allow_methods[3];
 		bool						_auto_index;
 		bool						_upload;
+		bool						_is_directory;
 
 		void	set_attributs(std::string& location_config);
 		void	set_error_pages(std::string location_config);
@@ -31,7 +31,7 @@ class Location
 
 	public:
 		Location();
-		Location(std::string location_config);
+		Location(std::string location_config, std::string location_name);
 		~Location();
 
 		std::string	get_root() { return _root ; };
@@ -48,6 +48,7 @@ class Location
 		bool		get_auto_index() { return _auto_index ; };
 		bool		get_upload() { return _upload ; };
 		std::string	get_error_page(int index) { return _error_pages[index] ; };
+		bool		is_directory() { return _is_directory ; };
 };
 
 #endif

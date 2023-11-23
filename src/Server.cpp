@@ -59,7 +59,9 @@ void	Server::set_locations(std::string& server_config)
 		path = tmp.substr(begin, end - begin - 1);
 		begin = tmp.find('{') + 1;
 		end = tmp.find('}');
-		Location location(tmp.substr(begin, end - begin));
+		Location location(tmp.substr(begin, end - begin), path);
+		if ( location.is_directory() )
+			path = path.substr(0, path.size() - 1);
 		_locations[path] = location;
 		begin = server_config.find("\"location\"");
 	}

@@ -38,7 +38,6 @@ class Request
 		Mime								_mime;
 		Server*								_server;
 		Cluster*							_cluster;
-		// Server								_list_of_servers;
 		std::string							_active_location;
 		std::string							_cgi_path;
 	
@@ -56,29 +55,28 @@ class Request
 		void		generate_full_response();
 		void		send_auto_index();
 		void		redirection(std::string redirection);
-		int		is_path_to_cgi(std::vector<std::string>& cgi_paths);
+		int			is_path_to_cgi(std::vector<std::string>& cgi_paths);
 		bool		is_valid_cgi_extension();
-	public:
-		Request();
-		~Request();
-		void		set_fd_and_server(int fd, Server *server, Cluster &cluster);
 		void		set_server();
-		int			treat_received_data(char *buf, ssize_t nbytes);
-		int 		read_body(ssize_t nbytes, char *buf);
 		void 		parse_request();
-		void		create_response();
-		void		put_back_chunked();
-		int			send_response();
-		void		load_file();
-		// void		redirection(std::string redirection);
-
+		int 		read_body(ssize_t nbytes, char *buf);
 		void	cgi();
 
 		void		handle_GET();
 		void		handle_POST();
+		void		load_file();
 		void		handle_DELETE();
 		void		upload_file(std::string boundary);
 		void		error(int status_code, std::string status_message);
+		void		put_back_chunked();
+	public:
+		Request();
+		~Request();
+		void		set_fd_and_server(int fd, Server *server, Cluster &cluster);
+		int			treat_received_data(char *buf, ssize_t nbytes);
+		void		create_response();
+		int			send_response();
+
 
 		std::string&	get_request() { return _request ; };
 		std::string&	get_response() { return _response ; };

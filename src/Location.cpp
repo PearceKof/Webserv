@@ -3,8 +3,12 @@
 
 Location::Location() {}
 
-Location::Location(std::string location_config) : _auto_index(false)
+Location::Location(std::string location_config, std::string location_name) : _auto_index(false)
 {
+	if ( location_name.size() > 1 && location_name.find_last_of('/') == (location_name.size() - 1) )
+		_is_directory = true;
+	std::cerr << "[Loaction DEBUG]: location_name:" << location_name << " last / find at pos " << location_name.find_last_of('/') << " name size " << location_name.size() << std::endl;
+	std::cerr << "[Loaction DEBUG]: root of location:" << _root << std::endl;
 	set_attributs(location_config);
 	set_error_pages(location_config);
 	set_allow_methods(location_config);
@@ -16,12 +20,10 @@ Location::~Location() {}
 
 void	Location::set_attributs(std::string& location_config)
 {
-	// _server_name = trim_config("\"server_name\"", location_config);
 	_root = trim_config("\"root\"", location_config);
 	_index = trim_config("\"index\"", location_config);
 	_redirect = trim_config("\"redirect\"", location_config);
 	_upload_path = trim_config("\"upload_path\"", location_config);
-	// _client_max_body_size = trim_config("\"client_max_body_size\"", location_config);
 
 	if ( !(trim_config("\"autoindex\"", location_config).compare("on")) )
 		_auto_index = true;

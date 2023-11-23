@@ -117,6 +117,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path[" << index << "] " << locations[it->first].get_cgi_path(index) << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path(index)) << std::endl;
 			return ;
 		}
+		std::cerr << "[DEBUG set_PATH]: [" << _path << "] compared with[" << it->first << "]" << std::endl;
 		if ( (_path.find(it->first) == 0 && it->first != "/") || (_path == "/" && it->first == "/") )
 		{
 			std::string root;
@@ -127,7 +128,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			else
 				root = DEFAULT_ROOT;
 			
-			if ( _method != "DELETE" && locations[it->first].get_index() != "")
+			if ( _method != "DELETE" && locations[it->first].get_index() != "" && _path == it->first)
 				_path = root + locations[it->first].get_index();
 			else
 				_path = _path.replace(_path.find(it->first), it->first.size(), root);
@@ -411,7 +412,7 @@ void	Request::create_response()
 	{
 		error(400, "Bad Request");
 	}
-	else if ( _max_body_size_reached || _body_request.size())
+	else if ( _max_body_size_reached || _body_request.size() > _server->get_client_max_body_size() )
 	{
 		error(413, "Content Too Large");
 	}
@@ -512,8 +513,10 @@ void	Request::handle_GET()
 	_status_code = "200 OK";
 	Location location = _server->get_locations()[_active_location];
 
+	std::cerr << "[DEBUG]: _path " << _path << " location =" << _active_location << " autoindex=" << location.get_auto_index() << std::endl;
 	if ( is_directory(_path) )
 	{
+		std::cerr << "[DEBUG]: _path " << _path << " is directory" << std::endl;
 		if ( location.get_auto_index() == true )
 			send_auto_index();
 		else
@@ -529,7 +532,10 @@ void	Request::handle_GET()
 		}
 	}
 	else if ( is_existing_file(_path) )
+	{
+		std::cerr << "[DEBUG]: _path " << _path << " is directory" << std::endl;
 		load_file();
+	}
 	else
 		return error(404, "Not Found");
 }
@@ -592,10 +598,6 @@ void	Request::handle_POST()
 	{
 		_body_response = "application/x-www-form-urlencoded";
 	}
-	else if ( _header_request["Content-Type"].find("plain/text") != std::string::npos )
-	{
-
-	}
 	else
 		error(501, "Not Implemented");
 }
@@ -604,8 +606,7 @@ void	Request::handle_POST()
 void	Request::handle_DELETE()
 {
 	_status_code = "204 No Content";
-	
-	std::cerr << "[DEBUG]: DELETE _path= " << _path << " is existing file: " << is_existing_file(_path) << " active_location=" << _active_location  << std::endl;
+
 	if ( is_existing_file(_path) == false )
 	{
 		return error(404, "Not Found");
@@ -632,7 +633,7 @@ void	Request::generate_full_response()
 	_response += _body_response;
 
 	_left_to_send = _response.size();
-	std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
+	// std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
 }
 
 int	Request::send_response()
@@ -648,6 +649,7 @@ int	Request::send_response()
 	_response.erase(0, nbytes);
 
 	_left_to_send -= nbytes;
+	std::cerr << "_left_to_send= " << _left_to_send << std::endl;
 	if ( _left_to_send <= 0 || nbytes == 0 )
 	{
 		std::cout << "[WEBSERV]: sended full response to client [" << _socket << "] successfully" << std::endl;
