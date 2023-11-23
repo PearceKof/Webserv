@@ -99,9 +99,6 @@ void	Request::set_path(std::map<std::string, Location> locations)
 	std::string root;
 	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
 	{
-		
-		// std::cerr << "[DEBUG]: locations[" << it->first << "].cgi_path=[" << locations[it->first].get_cgi_path() << "] && find(" << locations[it->first].get_cgi_path() << ") in [" << _path << "]" << std::endl;
-		// if ( locations[it->first].get_cgi_path(0) != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos )
 		int index;
 		if ( (index = is_path_to_cgi(locations[it->first].get_cgi_paths())) != -1 )
 		{
@@ -114,7 +111,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 			_cgi_path = root + locations[it->first].get_cgi_path(index);
 			_active_location = it->first;
-			std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path[" << index << "] " << locations[it->first].get_cgi_path(index) << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path(index)) << std::endl;
+			//std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path[" << index << "] " << locations[it->first].get_cgi_path(index) << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path(index)) << std::endl;
 			return ;
 		}
 		std::cerr << "[DEBUG set_PATH]: [" << _path << "] compared with[" << it->first << "]" << std::endl;
@@ -136,7 +133,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			// 	_path = root + _path;
 
 			_active_location = it->first;
-			// std::cerr << "[DEBUG]: It'S NOIT A CGI PATH" << "get_cgi_path=" << locations[it->first].get_cgi_path() << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path()) << std::endl;
+			
 			return ;
 		}
 	}
@@ -160,7 +157,6 @@ int Request::read_body( ssize_t nbytes, char *buf)
 	{
 		return 0;
 	}
-	// std::cerr << "[DEBUG]: max body size: " <<  _server->get_client_max_body_size() << " current bodysize: " << (_body_request.size() + nbytes) << std::endl;
 	if ( _server->get_client_max_body_size() != 0 && _server->get_client_max_body_size() < (_body_request.size() + nbytes) )
 	{
 		_max_body_size_reached = true;
@@ -322,7 +318,6 @@ void	Request::cgi()
 {
 	std::string query_string;
 	std::string method_env = "REQUEST_METHOD=" + _method;
-	//setenv("REQUEST_METHOD", _method.c_str(), 1);
 	if ( access(_cgi_path.c_str(), X_OK) )
 		return error(403, "Forbidden");
 	if(_method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
@@ -350,7 +345,6 @@ void	Request::cgi()
 		const char	*pythonExecutable = "/usr/bin/python3";
 		char	*argv[] = {(char*)pythonExecutable, (char*)_cgi_path.c_str(), nullptr};
 		char *envp[] = {(char*)query_string.c_str(), (char*)method_env.c_str(), nullptr};
-		std::cout << "envp[1]: " << envp[0] << std::endl;
 		close(pipe_fd[0]);
 		dup2(pipe_fd[1], STDOUT_FILENO);
 		close(pipe_fd[1]);
@@ -412,7 +406,7 @@ void	Request::create_response()
 	{
 		error(400, "Bad Request");
 	}
-	else if ( _max_body_size_reached || _body_request.size() > _server->get_client_max_body_size() )
+	else if ( _max_body_size_reached || _body_request.size() > _server->get_client_max_body_size())
 	{
 		error(413, "Content Too Large");
 	}
@@ -633,7 +627,7 @@ void	Request::generate_full_response()
 	_response += _body_response;
 
 	_left_to_send = _response.size();
-	// std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
+	//std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
 }
 
 int	Request::send_response()
