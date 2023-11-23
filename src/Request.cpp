@@ -354,12 +354,19 @@ void	Request::cgi()
 		{
 			close(pipe_fd[1]);
 
+			if ( status != 0 )
+			{
+				close(pipe_fd[0]);
+				return error(500, "Internal Server Error");
+			}
 			char buffer[1024];
 			ssize_t n;
 			while ((n = read(pipe_fd[0], buffer, 1024)) > 0)
-				_body_response.append(buffer, n);
+			{
+				for ( ssize_t i = 0 ; i < n ; i++ )
+					_body_response.push_back(buffer[i]);
+			}
 			close(pipe_fd[0]);
-			waitpid(-1, NULL, 0);
 		}
 		else
 			return error(500, "Internal Server Error");
