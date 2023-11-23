@@ -7,8 +7,6 @@ Location::Location(std::string location_config, std::string location_name) : _au
 {
 	if ( location_name.size() > 1 && location_name.find_last_of('/') == (location_name.size() - 1) )
 		_is_directory = true;
-	std::cerr << "[Loaction DEBUG]: location_name:" << location_name << " last / find at pos " << location_name.find_last_of('/') << " name size " << location_name.size() << std::endl;
-	std::cerr << "[Loaction DEBUG]: root of location:" << _root << std::endl;
 	set_attributs(location_config);
 	set_error_pages(location_config);
 	set_allow_methods(location_config);
@@ -94,7 +92,6 @@ void	Location::set_cgi_path(std::string location_config)
 	tmp = location_config.substr(begin, end - begin);
 	begin = 0;
 	end = tmp.find(' ', begin);
-	std::cerr << "___tmp =" << tmp << "=____" << std::endl;
 	while ( end != std::string::npos )
 	{
 		_cgi_path.push_back(tmp.substr(begin, end - begin));

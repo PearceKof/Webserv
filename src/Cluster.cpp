@@ -7,7 +7,7 @@ Cluster::Cluster()
 	_kq = kqueue();
 	if ( _kq == -1 )
     {
-        std::cerr << "epoll_create failed" << std::endl;
+        std::cerr << "[ERROR]: kqueue failed" << std::endl;
         exit(EXIT_FAILURE);
     }
 }
@@ -194,27 +194,20 @@ void	Cluster::read_event(int client_socket)
 
 	if ( read_request(client_socket) && _clients[client_socket].get_response() == "" )
 	{
-		std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << "\nBody=\n[" << _clients[client_socket].get_body_request() << "]" << std::endl;
+		// std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
 		
 		_clients[client_socket].create_response();
 
-		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
+		// std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
 
-		// ev_set = _clients[client_socket].events;
 		EV_SET(&ev_set, client_socket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 		if ( kevent(_kq, &ev_set, 1, 0, 0, 0 ) )
-			std::cerr << "[WEBSERV]: kevent failed" << std::endl;
+			std::cerr << "[ERROR]: kevent failed" << std::endl;
 	}
 }
 
 void	Cluster::write_event(int client_socket)
 {
-	// if (_clients[client_socket].get_request() != "")
-	// 	std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
-
-	// _clients[client_socket].handle_request();
-	// std::cerr << "[DEBUG] WRITE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
-
 	if ( _clients[client_socket].send_response() )
 	{
 		_clients[client_socket].get_response() = "";
@@ -237,7 +230,7 @@ void	Cluster::run()
         int    num_events = kevent(_kq, NULL, 0, ev_list, 1024, NULL);
         if ( num_events == -1 )
         {
-            std::cerr << "kevent failed" << std::endl;
+            std::cerr << "[ERROR]: kevent failed" << std::endl;
             exit(EXIT_FAILURE);
         }
         else if ( 0 < num_events )

@@ -159,28 +159,6 @@ void	Server::set_listen(std::string location_config)
 	}
 }
 
-// void	Server::set_cgi_extension(std::string server_config)
-// {
-// 	size_t		begin;
-// 	size_t		end;
-// 	std::string	tmp;
-
-// 	begin = server_config.find("\"cgi_extension\"") + 16;
-// 	if ( begin == std::string::npos + 16 )
-// 		return ;
-// 	end = server_config.find('\n', begin);
-// 	tmp = server_config.substr(begin, end - begin);
-// 	begin = 0;
-// 	end = tmp.find(' ', begin);
-// 	while ( end != std::string::npos ) //à checker
-// 	{
-// 		_cgi_extension.push_back(tmp.substr(begin, end - begin));
-// 		begin = end + 1;
-// 		end = tmp.find(' ', begin);
-// 	}
-// 	_cgi_extension.push_back(tmp.substr(begin, end - begin));
-// }
-
 bool	Server::is_valid_server()
 {
 	if ( _listening_port.size() < 1 )

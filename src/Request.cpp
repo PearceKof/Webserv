@@ -84,9 +84,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 	size_t end;
 	std::string extension = "default";
 
-	std::cerr << "path before [" << _path << "]" << std::endl;
 	_path = decode_url(_path);
-	std::cerr << "path after [" << _path << "]" << std::endl;
 	if ( _mime.is_a_file(_path) )
 	{
 		_request_a_file = true;
@@ -111,10 +109,8 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 			_cgi_path = root + locations[it->first].get_cgi_path(index);
 			_active_location = it->first;
-			//std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path[" << index << "] " << locations[it->first].get_cgi_path(index) << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path(index)) << std::endl;
 			return ;
 		}
-		std::cerr << "[DEBUG set_PATH]: [" << _path << "] compared with[" << it->first << "]" << std::endl;
 		if ( (_path.find(it->first) == 0 && it->first != "/") || (_path == "/" && it->first == "/") )
 		{
 			std::string root;
@@ -125,12 +121,10 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			else
 				root = DEFAULT_ROOT;
 			
-			if ( _method != "DELETE" && locations[it->first].get_index() != "" && _path == it->first)
+			if ( _method != "DELETE" && locations[it->first].get_index() != "" && _path == it->first )
 				_path = root + locations[it->first].get_index();
 			else
 				_path = _path.replace(_path.find(it->first), it->first.size(), root);
-			// else
-			// 	_path = root + _path;
 
 			_active_location = it->first;
 			
@@ -208,7 +202,6 @@ void	Request::set_server()
 		std::vector<std::pair<std::string, int> > list_of_host = it_serv->get_listening_port();
 		for ( std::vector<std::pair<std::string, int> >::iterator it_host = list_of_host.begin() ; it_host != list_of_host.end() ; it_host++)
 		{
-			// std::cerr << "[DEBUG]: host:" << hostname << " compared to " << it_host->first << " port:" << port << " compared to " << it_host->second << std::endl; 
 			if ( (hostname == it_host->first || hostname == it_serv->get_server_name()) && atoi(port.c_str()) == it_host->second )
 			{
 				_server = _cluster->get_server(index);
@@ -357,7 +350,7 @@ void	Request::cgi()
 		int status;
 		waitpid(pid, &status, 0);
 		
-		if (WIFEXITED(status) && status == 0)
+		if (WIFEXITED(status))
 		{
 			close(pipe_fd[1]);
 
@@ -460,8 +453,7 @@ void	Request::send_auto_index()
 	if ( dir == NULL )
 		return error(403, "Forbidden");
 
-	_body_response = "<html><head><title>Directory Listing</title></head><body><h1>Directory Listing</h1><table>";
-	_body_response += "<tr><td><a href=\"../\">../</a></td><td>-</td></tr>";
+	_body_response = "<html><head><title>Directory Listing</title></head><body><h1>" + _path + "</h1><table>";
 
 	struct dirent *dirent;
 
@@ -471,7 +463,7 @@ void	Request::send_auto_index()
 		std::string path =  _active_location + "/" + name;
 
 		std::string size;
-		if ( dirent->d_type == DT_REG)
+		if ( dirent->d_type == DT_REG )
 		{
 			struct stat st;
 			if (stat(path.c_str(), &st) == 0)
@@ -486,6 +478,8 @@ void	Request::send_auto_index()
 		
 		if ( dirent->d_type != DT_DIR )
 			_body_response += "<tr><td><a href=\"" + path + "\">" + name + "</a></td><td>" + size + "</td></tr>";
+		else if (name != ".")
+			_body_response += "<tr><td><a href=\"" + path + "\">" + name + "/" "</a></td><td>" + size + "</td></tr>";
 	}
 	_body_response += "</table></body></html>";
 	closedir(dir);
@@ -507,10 +501,8 @@ void	Request::handle_GET()
 	_status_code = "200 OK";
 	Location location = _server->get_locations()[_active_location];
 
-	std::cerr << "[DEBUG]: _path " << _path << " location =" << _active_location << " autoindex=" << location.get_auto_index() << std::endl;
 	if ( is_directory(_path) )
 	{
-		std::cerr << "[DEBUG]: _path " << _path << " is directory" << std::endl;
 		if ( location.get_auto_index() == true )
 			send_auto_index();
 		else
@@ -527,7 +519,6 @@ void	Request::handle_GET()
 	}
 	else if ( is_existing_file(_path) )
 	{
-		std::cerr << "[DEBUG]: _path " << _path << " is directory" << std::endl;
 		load_file();
 	}
 	else
@@ -627,7 +618,6 @@ void	Request::generate_full_response()
 	_response += _body_response;
 
 	_left_to_send = _response.size();
-	//std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
 }
 
 int	Request::send_response()
@@ -643,7 +633,6 @@ int	Request::send_response()
 	_response.erase(0, nbytes);
 
 	_left_to_send -= nbytes;
-	std::cerr << "_left_to_send= " << _left_to_send << std::endl;
 	if ( _left_to_send <= 0 || nbytes == 0 )
 	{
 		std::cout << "[WEBSERV]: sended full response to client [" << _socket << "] successfully" << std::endl;
