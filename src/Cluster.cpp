@@ -14,7 +14,14 @@ Cluster::Cluster()
 
 Cluster::~Cluster()
 {
+	std::cout << "[WEBSERV]: Cluster destructer called" << std::endl;
 	close(_kq);
+
+	std::map<int, Request>::iterator it = _clients.begin();
+	for ( it = _clients.begin() ; it != _clients.end() ; it++ )
+	{
+		close_connection(it->second.get_socket());
+	}
 }
 
 

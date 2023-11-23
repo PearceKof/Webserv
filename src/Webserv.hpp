@@ -14,7 +14,7 @@
 # include "Request.hpp"
 # include "Location.hpp"
 # include <sys/wait.h>
-
+# include <csignal>
 # include <cstdlib>
 # include <iostream>
 # include <stdexcept>

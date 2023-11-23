@@ -77,7 +77,7 @@ class Request
 		void		create_response();
 		int			send_response();
 
-
+		int&			get_socket(){ return _socket ; };
 		std::string&	get_request() { return _request ; };
 		std::string&	get_response() { return _response ; };
 		std::string&	get_body_request() { return _body_request ; };
