@@ -1,6 +1,7 @@
 
 #include "Request.hpp"
 #include <unistd.h>
+#include <stdlib.h>
 
 Request::Request()
 {
@@ -319,10 +320,18 @@ void	Request::put_back_chunked()
 void	Request::cgi()
 {
 	std::string query_string;
+	std::string method_env = "REQUEST_METHOD=" + _method;
+	//setenv("REQUEST_METHOD", _method.c_str(), 1);
+	if ( access(_cgi_path.c_str(), X_OK) )
+		return error(403, "Forbidden");
 	if(_method == "GET" && _server->get_locations()[_active_location].get_allow_methods(GET))
+	{
 		query_string = _path.substr(_path.find("?") + 1);
+	}
 	else if (_method == "POST" && _server->get_locations()[_active_location].get_allow_methods(POST))
+	{
 		query_string = _body_request;
+	}
 	else
 		return error(405, "Method Not Allowed");
 
@@ -339,7 +348,7 @@ void	Request::cgi()
 	{
 		const char	*pythonExecutable = "/usr/bin/python3";
 		char	*argv[] = {(char*)pythonExecutable, (char*)_cgi_path.c_str(), nullptr};
-		char *envp[] = {(char*)query_string.c_str(), nullptr};
+		char *envp[] = {(char*)query_string.c_str(), (char*)method_env.c_str(), nullptr};
 		std::cout << "envp[1]: " << envp[0] << std::endl;
 		close(pipe_fd[0]);
 		dup2(pipe_fd[1], STDOUT_FILENO);
@@ -353,7 +362,7 @@ void	Request::cgi()
 		int status;
 		waitpid(pid, &status, 0);
 		
-		if (WIFEXITED(status))
+		if (WIFEXITED(status) && status == 0)
 		{
 			close(pipe_fd[1]);
 
