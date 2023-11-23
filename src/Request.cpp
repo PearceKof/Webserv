@@ -99,9 +99,6 @@ void	Request::set_path(std::map<std::string, Location> locations)
 	std::string root;
 	for ( std::map<std::string, Location>::iterator it = locations.begin() ; it != locations.end() ; ++it )
 	{
-		
-		// std::cerr << "[DEBUG]: locations[" << it->first << "].cgi_path=[" << locations[it->first].get_cgi_path() << "] && find(" << locations[it->first].get_cgi_path() << ") in [" << _path << "]" << std::endl;
-		// if ( locations[it->first].get_cgi_path(0) != "" && _path.find(locations[it->first].get_cgi_path()) != std::string::npos )
 		int index;
 		if ( (index = is_path_to_cgi(locations[it->first].get_cgi_paths())) != -1 )
 		{
@@ -114,7 +111,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 
 			_cgi_path = root + locations[it->first].get_cgi_path(index);
 			_active_location = it->first;
-			std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path[" << index << "] " << locations[it->first].get_cgi_path(index) << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path(index)) << std::endl;
+			//std::cerr << "[DEBUG]: IS CGI PATH get_cgi_path[" << index << "] " << locations[it->first].get_cgi_path(index) << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path(index)) << std::endl;
 			return ;
 		}
 		if ( (_path.find(it->first) == 0 && it->first != "/") || (_path == "/" && it->first == "/") )
@@ -135,7 +132,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			// 	_path = root + _path;
 
 			_active_location = it->first;
-			// std::cerr << "[DEBUG]: It'S NOIT A CGI PATH" << "get_cgi_path=" << locations[it->first].get_cgi_path() << " _path="<< _path << " _path.find(locations[it->first].get_cgi_path())= " << _path.find(locations[it->first].get_cgi_path()) << std::endl;
+			
 			return ;
 		}
 	}
@@ -159,7 +156,6 @@ int Request::read_body( ssize_t nbytes, char *buf)
 	{
 		return 0;
 	}
-	// std::cerr << "[DEBUG]: max body size: " <<  _server->get_client_max_body_size() << " current bodysize: " << (_body_request.size() + nbytes) << std::endl;
 	if ( _server->get_client_max_body_size() != 0 && _server->get_client_max_body_size() < (_body_request.size() + nbytes) )
 	{
 		_max_body_size_reached = true;
@@ -602,8 +598,7 @@ void	Request::handle_POST()
 void	Request::handle_DELETE()
 {
 	_status_code = "204 No Content";
-	
-	std::cerr << "[DEBUG]: DELETE _path= " << _path << " is existing file: " << is_existing_file(_path) << " active_location=" << _active_location  << std::endl;
+
 	if ( is_existing_file(_path) == false )
 	{
 		return error(404, "Not Found");
@@ -630,7 +625,7 @@ void	Request::generate_full_response()
 	_response += _body_response;
 
 	_left_to_send = _response.size();
-	std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
+	//std::cerr << "[DEBUG]: response generated for client[" << _socket << "]:\n[" << _response << "]\nleft_to_send=" << _left_to_send << std::endl;
 }
 
 int	Request::send_response()
