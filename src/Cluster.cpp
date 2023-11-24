@@ -2,6 +2,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+extern int run;
+
 Cluster::Cluster()
 {
 	_kq = kqueue();
@@ -11,17 +13,24 @@ Cluster::Cluster()
         exit(EXIT_FAILURE);
     }
 }
-
+#include <stack>
 Cluster::~Cluster()
 {
 	std::cout << "[WEBSERV]: Cluster destructer called" << std::endl;
-	close(_kq);
 
-	std::map<int, Request>::iterator it = _clients.begin();
-	for ( it = _clients.begin() ; it != _clients.end() ; it++ )
+	if ( not _clients.empty() )
 	{
-		close_connection(it->second.get_socket());
+		std::stack<int> stack;
+		for ( std::map<int, Request>::iterator it = _clients.begin() ; it != _clients.end() ; ++it )
+			stack.push(it->first);
+		while ( not stack.empty() )
+		{
+			close_connection(stack.top());
+			stack.pop();
+		}
 	}
+
+	close(_kq);
 }
 
 
@@ -115,7 +124,7 @@ void	Cluster::set_sockets()
 			Socket new_socket(listening_port[j].second, &_servers[i]);
 			_sockets.push_back(new_socket);
 			struct kevent ev_set;
-			EV_SET(&ev_set, new_socket.get_server_socket_fd(), EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, NULL);
+			EV_SET(&ev_set, new_socket.get_server_socket_fd(), EVFILT_READ, EV_ADD, 0, 0, NULL);
 			if ( kevent(_kq, &ev_set, 1, NULL, 0, NULL) == -1 )
 				std::cerr << "[WEBSERV]: failed to add socket to kqueue" << std::endl;
 			else
@@ -140,20 +149,22 @@ void	Cluster::accept_new_connection(int new_client_fd, Socket *socket)
 	std::cerr << "[WEBSERV]: attempt to connect client from [" << new_client_fd << "]" << std::endl;
 	int fd = accept(new_client_fd, (struct sockaddr *)socket->get_server_address(), &addr_len);
 	if ( fd == -1 )
-		std::cerr << "[WEBSERV]: connection refused." << std::endl;
+		throw std::runtime_error("connection refused");
 	else
 	{
-		if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
-			throw std::runtime_error("fcntl function failed");
+		// if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
+		// 	throw std::runtime_error("fcntl function failed");
 
-		_clients[fd].set_fd_and_server(fd, socket->get_server(), *this);
 
-		ev_set.ident = fd;
 		EV_SET(&ev_set, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
 		if ( kevent(_kq, &ev_set, 1, NULL, 0, NULL) == -1 )
 			std::cerr << "[WEBSERV]: kevent failed to add client [" << fd << "]" << std::endl;
-		else
-			std::cerr << "[WEBSERV]: succeed to add client [" << fd << "]" << std::endl;
+		EV_SET(&ev_set, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
+		if ( kevent(_kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+			std::cerr << "[WEBSERV]: kevent failed to add client [" << fd << "]" << std::endl;
+
+		_clients[fd].set_fd_and_server(fd, socket->get_server(), *this);
+		std::cerr << "[WEBSERV]: succeed to add client [" << fd << "]" << std::endl;
 	}
 }
 
@@ -169,14 +180,17 @@ Socket	*Cluster::is_a_listen_fd(int event_fd)
 
 void	Cluster::close_connection(int client_socket)
 {
-	struct kevent ev_set;
-	EV_SET(&ev_set, client_socket, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-	if ( kevent(_kq, &ev_set, 1, NULL, 0, NULL) == -1 )
+	struct kevent ev_set[2];
+	EV_SET(ev_set, client_socket, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	EV_SET(ev_set + 1, client_socket, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+	if ( kevent(_kq, ev_set, 2, NULL, 0, NULL) < 0 )
 		std::cerr << "[WEBSERV]: failed to delete client [" << client_socket << "]" << std::endl;
 	else
+	{
+		close(client_socket);
+		_clients.erase(client_socket);
 		std::cerr << "[WEBSERV]: client [" << client_socket << "] deleted successfully" << std::endl;
-	close(client_socket);
-	_clients.erase(client_socket);
+	}
 }
 
 int	Cluster::read_request(int client_socket)
@@ -199,46 +213,57 @@ void	Cluster::read_event(int client_socket)
 {
 	struct kevent ev_set;
 
-	if ( read_request(client_socket) && _clients[client_socket].get_response() == "" )
+	std::cerr << "[DEBUG]: read called for client [" << client_socket << "]" << std::endl;
+	if ( read_request(client_socket) )
 	{
-		// std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
+		std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
 		
 		_clients[client_socket].create_response();
 
-		// std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
+		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
 
-		EV_SET(&ev_set, client_socket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
-		if ( kevent(_kq, &ev_set, 1, 0, 0, 0 ) )
-			std::cerr << "[ERROR]: kevent failed" << std::endl;
+		_clients[client_socket].set_to_ready(true);
+		std::cerr << "[DEBUG]: client [" << client_socket << "] is ready to read" << std::endl;
+		// EV_SET(&ev_set, client_socket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
+		// if ( kevent(_kq, &ev_set, 1, 0, 0, 0 ) )
+		// 	std::cerr << "[ERROR]: kevent failed" << std::endl;
+		// else
+		// 	std::cerr << "[ERROR]: kevent succeed" << std::endl;
 	}
 }
 
 void	Cluster::write_event(int client_socket)
 {
-	if ( _clients[client_socket].send_response() )
+	// std::cerr << "[DEBUG]: write for client [" << client_socket << "] response = " << _clients[client_socket].get_response()  << std::endl;
+	if ( _clients[client_socket].is_ready_to_send() )
 	{
-		_clients[client_socket].get_response() = "";
-		_clients[client_socket].get_request() = "";
-		_clients[client_socket].get_body_request() = "";
-
-		close_connection(client_socket);
+		std::cerr << "[DEBUG]: client [" << client_socket << "] is ready to send" << std::endl;
+		if ( _clients[client_socket].send_response() )
+		{
+			_clients[client_socket].get_response() = "";
+			_clients[client_socket].get_request() = "";
+			_clients[client_socket].get_body_request() = "";
+			_clients[client_socket].set_to_ready(false);
+			close_connection(client_socket);
+		}
 	}
 }
 
 void	Cluster::run()
 {
-	struct kevent ev_set;
 	struct kevent ev_list[1024];
-
+	extern int run;
 	set_sockets();
 
-	while (1)
+	while ( run )
     {
         int    num_events = kevent(_kq, NULL, 0, ev_list, 1024, NULL);
-        if ( num_events == -1 )
+		if ( not run )
+			std::cerr << "[WEBSERV]: signal to shutdown received" << std::endl;
+        else if ( num_events == -1 )
         {
             std::cerr << "[ERROR]: kevent failed" << std::endl;
-            exit(EXIT_FAILURE);
+			run = 0;
         }
         else if ( 0 < num_events )
         {

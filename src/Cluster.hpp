@@ -11,6 +11,7 @@
 # include <string>
 # include <map>
 # include <vector>
+# include <stack>
 
 class Server;
 class Socket;

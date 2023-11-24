@@ -1,9 +1,11 @@
 
 #include "Webserv.hpp"
 
+int run = 1;
+
 void	sigint_handler(int sig)
 {
-	
+	run = 0;
 }
 
 int	main(int ac, char **av)
@@ -22,7 +24,7 @@ int	main(int ac, char **av)
 			cluster.config(av[1]);
 		else
 			cluster.config(DEFAULT_CONFIG_PATH);
-		signal(SIGINT, sigint_handler);
+		std::signal(SIGINT, sigint_handler);
 		if ( cluster.is_valid_config() == false )
 		{
 			std::cerr << "[ERROR]: Invalid configuration file" << std::endl;
@@ -36,5 +38,6 @@ int	main(int ac, char **av)
 		std::cerr << e.what() << std::endl;
 	}
 
+	std::cerr << "TEST fin du programme" << std::endl;
 	return EXIT_SUCCESS ;
 }

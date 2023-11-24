@@ -5,6 +5,7 @@
 
 Request::Request()
 {
+	_is_ready_to_send = false;
 	_body_is_unfinished = false;
 	_request_is_chunked = false;
 	_request_a_file = false;
@@ -631,7 +632,7 @@ int	Request::send_response()
 {
 	ssize_t nbytes;
 
-	nbytes = send(_socket, _response.c_str(), 120, 0);
+	nbytes = send(_socket, _response.c_str(), 1024, 0);
 	if (nbytes == -1 )
 	{
 		std::cerr << "[ERROR]: client [" << _socket << "] failed to send response" << std::endl;

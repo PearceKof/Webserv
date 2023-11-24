@@ -50,6 +50,7 @@ class Request
 		bool								_request_is_chunked;
 		bool								_body_is_unfinished;
 		bool								_max_body_size_reached;
+		bool								_is_ready_to_send;
 
 		void		set_path(std::map<std::string, Location> locations);
 		void		generate_full_response();
@@ -82,6 +83,8 @@ class Request
 		std::string&	get_response() { return _response ; };
 		std::string&	get_body_request() { return _body_request ; };
 		std::string&	get_header_request(std::string index) { return _header_request[index] ; };
+		bool			is_ready_to_send() {return _is_ready_to_send ; };
+		void			set_to_ready(bool boolean) { _is_ready_to_send = boolean; };
 };
 
 #endif
