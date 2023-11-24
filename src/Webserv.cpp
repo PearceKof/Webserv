@@ -38,6 +38,5 @@ int	main(int ac, char **av)
 		std::cerr << e.what() << std::endl;
 	}
 
-	std::cerr << "TEST fin du programme" << std::endl;
 	return EXIT_SUCCESS ;
 }

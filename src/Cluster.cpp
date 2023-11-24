@@ -152,8 +152,8 @@ void	Cluster::accept_new_connection(int new_client_fd, Socket *socket)
 		throw std::runtime_error("connection refused");
 	else
 	{
-		// if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
-		// 	throw std::runtime_error("fcntl function failed");
+		if ( fcntl(fd, F_SETFL, O_NONBLOCK) < 0 )
+			throw std::runtime_error("fcntl function failed");
 
 
 		EV_SET(&ev_set, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
@@ -216,19 +216,8 @@ void	Cluster::read_event(int client_socket)
 	std::cerr << "[DEBUG]: read called for client [" << client_socket << "]" << std::endl;
 	if ( read_request(client_socket) )
 	{
-		std::cerr << "[DEBUG] READ _clients[" << client_socket << "].request = " << _clients[client_socket].get_request() << std::endl;
-		
 		_clients[client_socket].create_response();
-
-		std::cerr << "\n[DEBUG] RESPONSE _clients[" << client_socket << "].response = " << _clients[client_socket].get_response() << std::endl;
-
-		_clients[client_socket].set_to_ready(true);
-		std::cerr << "[DEBUG]: client [" << client_socket << "] is ready to read" << std::endl;
-		// EV_SET(&ev_set, client_socket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
-		// if ( kevent(_kq, &ev_set, 1, 0, 0, 0 ) )
-		// 	std::cerr << "[ERROR]: kevent failed" << std::endl;
-		// else
-		// 	std::cerr << "[ERROR]: kevent succeed" << std::endl;
+		_clients[client_socket].set_ready(true);
 	}
 }
 
@@ -240,11 +229,14 @@ void	Cluster::write_event(int client_socket)
 		std::cerr << "[DEBUG]: client [" << client_socket << "] is ready to send" << std::endl;
 		if ( _clients[client_socket].send_response() )
 		{
+			std::cerr << "TEST connection == [" << _clients[client_socket].get_header_request("Connection") << "]"<< std::endl;
+			if (_clients[client_socket].get_header_request("Connection") != "keep-alive")
+				close_connection(client_socket);
+
 			_clients[client_socket].get_response() = "";
 			_clients[client_socket].get_request() = "";
 			_clients[client_socket].get_body_request() = "";
-			_clients[client_socket].set_to_ready(false);
-			close_connection(client_socket);
+			_clients[client_socket].set_ready(false);
 		}
 	}
 }
