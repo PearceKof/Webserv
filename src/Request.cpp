@@ -122,7 +122,7 @@ void	Request::set_path(std::map<std::string, Location> locations)
 			else
 				root = DEFAULT_ROOT;
 			
-			if ( _method != "DELETE" && locations[it->first].get_index() != "" && _path == it->first )
+			if ( _method == "GET" && locations[it->first].get_index() != "" && _path == it->first )
 				_path = root + locations[it->first].get_index();
 			else
 				_path = _path.replace(_path.find(it->first), it->first.size(), root);
@@ -547,21 +547,42 @@ std::string	get_filename(std::string body)
 
 void	Request::upload_file(std::string boundary)
 {
+	std::string	body_trimmed;
+	std::string	filename;
 	Location active_location = _server->get_locations()[_path];
-	std::string filename = get_filename(_body_request);
-	if ( filename.empty() )
-		return error(400, "Bad Request");
-	size_t	begin = _body_request.find("\r\n\r\n");
-	size_t	end = _body_request.find("\r\n--" + boundary + "--", begin);
-	if ( begin == std::string::npos || end == std::string::npos )
-		return error(400, "Bad Request");
-	std::string	body_trimmed = _body_request.substr(begin + 4, end - (begin + 4));
+	if ( boundary != "" )
+	{
+		filename = get_filename(_body_request);
+		if ( filename.empty() )
+			return error(400, "Bad Request");
+		size_t	begin = _body_request.find("\r\n\r\n");
+		size_t	end = _body_request.find("\r\n--" + boundary + "--", begin);
+		if ( begin == std::string::npos || end == std::string::npos )
+			return error(400, "Bad Request");
+		body_trimmed = _body_request.substr(begin + 4, end - (begin + 4));
+	}
+	else
+	{
+		body_trimmed = _body_request;
+		size_t pos = _path.find_last_of('/');
+		if (pos == std::string::npos)
+			return error(400, "Bad Request");
+		if ( pos != _path.size() - 1 && pos)
+		{
+			filename = _path.substr(pos, _path.size() - pos);
+		}
+		else
+			return error(400, "Bad Request");
+	}
 
+	std::cerr << "[DEBUG]: filename =[" << filename << "]path[" << _path << "]" << std::endl;
 	std::string path;
 	if ( active_location.get_upload_path() != "" )
 		path = active_location.get_upload_path() + "/" + filename;
-	else
+	else if ( active_location.get_upload() == true )
 		path = DEFAULT_UPLOAD_PATH"/" + filename;
+	else
+		return error(403, "Forbidden");
 
 	if ( !access(path.c_str(), F_OK) )
 		return error(409, "Conflict");
@@ -587,9 +608,13 @@ void	Request::handle_POST()
 	{
 		upload_file(_header_request["Content-Type"].substr(pos_boundary + 9));
 	}
+	else if ( _header_request.find("Content-Type") != _header_request.end() )
+	{
+		upload_file("");
+	}
 	else if ( _header_request["Content-Type"].find("application/x-www-form-urlencoded") != std::string::npos )
 	{
-		_body_response = "application/x-www-form-urlencoded";
+		_body_response = _body_request;
 	}
 	else
 		error(501, "Not Implemented");

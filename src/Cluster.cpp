@@ -224,9 +224,9 @@ void	Cluster::read_event(int client_socket)
 {
 	struct kevent ev_set;
 
-	std::cerr << "[DEBUG]: read called for client [" << client_socket << "]" << std::endl;
 	if ( read_request(client_socket) )
 	{
+		// std::cerr << "DEBUG: REQUEST=\n[" << _clients[client_socket].get_request() << std::endl;
 		_clients[client_socket].create_response();
 		_clients[client_socket].set_ready(true);
 	}
@@ -234,22 +234,8 @@ void	Cluster::read_event(int client_socket)
 
 void	Cluster::write_event(int client_socket)
 {
-	// std::cerr << "[DEBUG]: write for client [" << client_socket << "] response = " << _clients[client_socket].get_response()  << std::endl;
-	if ( _clients[client_socket].is_ready_to_send() )
-	{
-		std::cerr << "[DEBUG]: client [" << client_socket << "] is ready to send" << std::endl;
-		if ( _clients[client_socket].send_response() )
-		{
-			std::cerr << "TEST connection == [" << _clients[client_socket].get_header_request("Connection") << "]"<< std::endl;
-			if (_clients[client_socket].get_header_request("Connection") != "keep-alive")
-				close_connection(client_socket);
-
-			_clients[client_socket].get_response() = "";
-			_clients[client_socket].get_request() = "";
-			_clients[client_socket].get_body_request() = "";
-			_clients[client_socket].set_ready(false);
-		}
-	}
+	if ( _clients[client_socket].is_ready_to_send() &&  _clients[client_socket].send_response())
+		close_connection(client_socket);
 }
 
 void	Cluster::run()
