@@ -13,12 +13,23 @@ Cluster::Cluster()
         exit(EXIT_FAILURE);
     }
 }
-#include <stack>
+
 Cluster::~Cluster()
 {
 	std::cout << "[WEBSERV]: Cluster destructer called" << std::endl;
 
-	if ( not _clients.empty() )
+
+	for ( std::vector<Server>::iterator it_server = _servers.begin(); it_server != _servers.end() ; it_server++)
+	{
+		std::vector<std::pair<std::string, int> > listening_port = it_server->get_listening_port();
+		for ( std::vector<std::pair<std::string, int> >::iterator it_port = listening_port.begin(); it_port != listening_port.end() ; it_port++)
+		{
+			// std::cerr << "[DEBUG]: closing " << it_port->second << std::endl;
+			close(it_port->second);
+		}
+
+	}
+	if ( _clients.empty() )
 	{
 		std::stack<int> stack;
 		for ( std::map<int, Request>::iterator it = _clients.begin() ; it != _clients.end() ; ++it )
