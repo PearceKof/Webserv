@@ -46,12 +46,15 @@ To build and run Webserv, you need a C++ compiler that supports the C++ 98 stand
 
 		git clone https://github.com/yourusername/Webserv.git
 
+
 		cd Webserv
 
 3. Build the project:
-	make
 
-4. The Makefile includes the following targets:
+
+		make
+
+5. The Makefile includes the following targets:
    - all: Compiles the project
    - clean: Removes object files
    - fclean: Removes object files and the executable
