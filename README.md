@@ -1,8 +1,8 @@
-## Webserv
+# Webserv
 
 Webserv is a web server implemented in C++ as part of a project at 19 (42 Network). The objective is to create a fully functional HTTP/1.1 web server that is non-blocking, handles multiple ports, and complies with C++ 98 standards.
 
-# Table of Contents
+## Table of Contents
 
 - Project Overview
 - Features
@@ -12,11 +12,11 @@ Webserv is a web server implemented in C++ as part of a project at 19 (42 Networ
 - Configuration
 - Dependencies
 
-# Project Overview
+## Project Overview
 
 The Webserv project aims to deepen our understanding of network programming, HTTP protocols, and server-client communication. The server is designed to handle HTTP requests, serve static files, and manage dynamic content, while implementing features like non-blocking I/O and proper error handling.
 
-# Features
+## Features
 
 - Fully compliant with HTTP/1.1
 - Non-blocking server operations using epoll()
@@ -29,7 +29,7 @@ The Webserv project aims to deepen our understanding of network programming, HTT
 - Default error pages if custom ones are not provided
 - Stress-tested for stability
 
-# Requirements
+## Requirements
 
 - Language: C++ 98 standard (must compile with -std=c++98)
 - Memory Management: The server must handle memory efficiently and should not crash even if it runs out of memory.
@@ -38,7 +38,7 @@ The Webserv project aims to deepen our understanding of network programming, HTT
 - Forbidden: External libraries and Boost libraries are not allowed.
 - System Calls Allowed: execve, dup, dup2, pipe, fork, poll, select, socket, bind, listen, accept, and many others as specified in the project requirements.
 
-# Installation
+## Installation
 
 To build and run Webserv, you need a C++ compiler that supports the C++ 98 standard and make.
 
@@ -55,14 +55,14 @@ To build and run Webserv, you need a C++ compiler that supports the C++ 98 stand
    - fclean: Removes object files and the executable
    - re: Rebuilds the project
 
-# Usage
+## Usage
 
 After building the server, you can start it by running:
 ./webserv [config_file]
 
 - config_file is a parameter where you can specify a configuration file for the server.
 
-# Configuration
+## Configuration
 
 Webserv can be customized using a configuration file similar to NGINX's format. Here is a basic example you can find in the config directory:
 
@@ -137,6 +137,6 @@ Webserv can be customized using a configuration file similar to NGINX's format. 
 - location: Sets the paths and the files defined with "index" that'll be sended on request and the accepted HTTP methods.
 - upload and upload_path: If Upload is set to on and Post is an allowed method, then it is possible to upload files to the server to the path defined in upload_path
 
-# Dependencies
+## Dependencies
 
 Webserv relies solely on the C++ standard library (C++ 98) and system calls. It does not require any external libraries.
