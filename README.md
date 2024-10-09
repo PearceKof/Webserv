@@ -65,7 +65,7 @@ After building the server, you can start it by running:
 # Configuration
 
 Webserv can be customized using a configuration file similar to NGINX's format. Here is a basic example you can find in the config directory:
-`
+{
 server {
 	"listen" localhost:80 localhost:81
 
@@ -127,7 +127,7 @@ server {
 		"allow_methods" GET
 	}
 }
-`
+}
 
 - listen: Specifies the port and IP address the server will listen on.
 - server_name: Defines the domain name of the server.
