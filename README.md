@@ -52,9 +52,9 @@ cd Webserv
 ```
 
 3. Build the project:
-
-
-		make
+```
+make
+```
 
 5. The Makefile includes the following targets:
    - all: Compiles the project
