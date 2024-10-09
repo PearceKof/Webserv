@@ -46,6 +46,8 @@ To build and run Webserv, you need a C++ compiler that supports the C++ 98 stand
 
 ```
 git clone https://github.com/yourusername/Webserv.git
+```
+```
 cd Webserv
 ```
 
