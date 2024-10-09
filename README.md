@@ -31,6 +31,7 @@ The Webserv project aims to deepen our understanding of network programming, HTT
 
 ## Requirements
 
+- All the requirements for this project are in en.subject.pdf.
 - Language: C++ 98 standard (must compile with -std=c++98)
 - Memory Management: The server must handle memory efficiently and should not crash even if it runs out of memory.
 - Makefile: The project must include a Makefile with at least the following rules: all, clean, fclean, re, and $(NAME)
