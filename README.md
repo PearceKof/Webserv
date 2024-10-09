@@ -43,11 +43,11 @@ The Webserv project aims to deepen our understanding of network programming, HTT
 To build and run Webserv, you need a C++ compiler that supports the C++ 98 standard and make.
 
 1. Clone the repository:
-   git clone https://github.com/yourusername/Webserv.git
-   cd Webserv
+	git clone https://github.com/yourusername/Webserv.git
+	cd Webserv
 
 2. Build the project:
-   make
+	make
 
 3. The Makefile includes the following targets:
    - all: Compiles the project
