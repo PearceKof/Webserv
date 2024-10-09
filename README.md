@@ -49,6 +49,7 @@ To build and run Webserv, you need a C++ compiler that supports the C++ 98 stand
 ```
 git clone https://github.com/PearceKof/Webserv.git
 ```
+2. Go into the cloned directory
 ```
 cd Webserv
 ```
@@ -58,7 +59,7 @@ cd Webserv
 make
 ```
 
-5. The Makefile includes the following targets:
+The Makefile includes the following targets:
    - all: Compiles the project
    - clean: Removes object files
    - fclean: Removes object files and the executable
@@ -67,9 +68,13 @@ make
 ## Usage
 
 After building the server, you can start it by running:
+```
 ./webserv [config_file]
-
-- config_file is a parameter where you can specify a configuration file for the server.
+```
+```
+./webserv config/default
+```
+config_file is a parameter where you can specify a configuration file for the server. You can find some config files in the config directory
 
 ## Configuration
 
