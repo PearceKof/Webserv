@@ -66,6 +66,7 @@ After building the server, you can start it by running:
 
 Webserv can be customized using a configuration file similar to NGINX's format. Here is a basic example you can find in the config directory:
 {
+
 server {
 	"listen" localhost:80 localhost:81
 
