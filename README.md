@@ -66,70 +66,68 @@ After building the server, you can start it by running:
 
 Webserv can be customized using a configuration file similar to NGINX's format. Here is a basic example you can find in the config directory:
 
-{
-
-server {
-	"listen" localhost:80 localhost:81
-
-	"server_name" example.com
-
-	"error_page" 400 www/400.html
-	"error_page" 403 www/403.html
-	"error_page" 404 www/404.html
-	"error_page" 405 www/405.html
-	"error_page" 409 www/409.html
-	"error_page" 413 www/413.html
-	"error_page" 415 www/415.html
-	"error_page" 500 www/500.html
-	"error_page" 501 www/501.html
-	"error_page" 505 www/505.html
-
-	"root" www
-	"client_max_body_size" 1000000
-
-	"location" / {
-		"index" /home.html
-		"allow_methods" GET
-	}
-
-	"location" /upload {
-		"index" /upload.html
-		"allow_methods" GET POST
-		"upload_path" www/upload
-		"upload" on
-	}
-
-	"location" /delete {
-		"root" www/upload
-		"index" /delete.html
-		"allow_methods" GET DELETE
-	}
-
-	"location" /assets {
-		"root" www/assets
-		"autoindex" on
-		"allow_methods" GET
-	}
-
-	"location" /cgi {
+	server {
+		"listen" localhost:80 localhost:81
+	
+		"server_name" example.com
+	
+		"error_page" 400 www/400.html
+		"error_page" 403 www/403.html
+		"error_page" 404 www/404.html
+		"error_page" 405 www/405.html
+		"error_page" 409 www/409.html
+		"error_page" 413 www/413.html
+		"error_page" 415 www/415.html
+		"error_page" 500 www/500.html
+		"error_page" 501 www/501.html
+		"error_page" 505 www/505.html
+	
 		"root" www
-		"index" /cgi.html
-		"allow_methods" GET POST
-		"cgi_path" /cgi/isprime.py /cgi/addition.py
-		"cgi_extension" py
+		"client_max_body_size" 1000000
+	
+		"location" / {
+			"index" /home.html
+			"allow_methods" GET
+		}
+	
+		"location" /upload {
+			"index" /upload.html
+			"allow_methods" GET POST
+			"upload_path" www/upload
+			"upload" on
+		}
+	
+		"location" /delete {
+			"root" www/upload
+			"index" /delete.html
+			"allow_methods" GET DELETE
+		}
+	
+		"location" /assets {
+			"root" www/assets
+			"autoindex" on
+			"allow_methods" GET
+		}
+	
+		"location" /cgi {
+			"root" www
+			"index" /cgi.html
+			"allow_methods" GET POST
+			"cgi_path" /cgi/isprime.py /cgi/addition.py
+			"cgi_extension" py
+		}
+	
+		"location" /redirection {
+			"allow_methods" GET
+			"redirect" https://www.youtube.com/watch?v=wFw-8AGBpYs
+		}
+	
+		"location" /download {
+			"index" /download.html
+			"allow_methods" GET
+		}
 	}
 
-	"location" /redirection {
-		"allow_methods" GET
-		"redirect" https://www.youtube.com/watch?v=wFw-8AGBpYs
-	}
-
-	"location" /download {
-		"index" /download.html
-		"allow_methods" GET
-	}
-}
-}
 
 - listen: Specifies the port and IP address the server will listen on.
 - server_name: Defines the domain name of the server.
