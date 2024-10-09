@@ -19,7 +19,7 @@ The Webserv project aims to deepen our understanding of network programming, HTT
 ## Features
 
 - Fully compliant with HTTP/1.1
-- Non-blocking server operations using epoll()
+- Non-blocking server operations using kqueue and kevent
 - Configurable server settings via a configuration file
 - Multi-port listening capabilities
 - Support for GET, POST, and DELETE methods
@@ -41,7 +41,7 @@ The Webserv project aims to deepen our understanding of network programming, HTT
 
 ## Installation
 
-To build and run Webserv, you need a C++ compiler that supports the C++ 98 standard and make.
+To build and run Webserv, you need a C++ compiler that supports the C++ 98 standard and make. This program is compatible with macOS and BSD systems.
 
 1. Clone the repository:
 
