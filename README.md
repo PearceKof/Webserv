@@ -14,7 +14,7 @@ Webserv is a web server implemented in C++ as part of a project at 19 (42 Networ
 
 ## Project Overview
 
-The Webserv project aims to deepen our understanding of network programming, HTTP protocols, and server-client communication. The server is designed to handle HTTP requests, serve static files, and manage dynamic content, while implementing features like non-blocking I/O and proper error handling.
+The Webserv project aims to deepen our understanding of network programming, HTTP protocols, and server-client communication. The server is designed to handle HTTP requests, serve static files, and manage cgi, while implementing features like non-blocking I/O and proper error handling.
 
 ## Features
 
