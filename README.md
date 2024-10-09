@@ -44,9 +44,9 @@ To build and run Webserv, you need a C++ compiler that supports the C++ 98 stand
 
 1. Clone the repository:
 
-	git clone https://github.com/yourusername/Webserv.git
+		git clone https://github.com/yourusername/Webserv.git
 
-	cd Webserv
+		cd Webserv
 
 3. Build the project:
 	make
