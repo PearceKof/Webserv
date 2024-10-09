@@ -1,5 +1,6 @@
 # Webserv
 ![42](https://img.shields.io/badge/School-42-black?style=flat-square&logo=42)
+
 Webserv is a web server implemented in C++ as part of a project at 19 (42 Network). The objective is to create a fully functional HTTP/1.1 web server that is non-blocking, handles multiple ports, and complies with C++ 98 standards.
 
 ## Table of Contents
